@@ -100,10 +100,22 @@ func (e *ESql) convertWhereExpr(expr *sqlparser.Expr, topLevel bool, parent *sql
 	case *sqlparser.ParenExpr:
 		boolExpr := (*expr).(*sqlparser.ParenExpr).Expr
 		return e.convertWhereExpr(&boolExpr, topLevel, expr)
+	case *sqlparser.NotExpr:
+		return e.convertNotExpr(expr, topLevel, parent)
 	default:
 		err = fmt.Errorf(`esql: %T expression not supported in where clause`, *expr)
 		return "", err
 	}
+}
+
+func (e *ESql) convertNotExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
+	notExpr := (*expr).(*sqlparser.NotExpr)
+	exprInside := notExpr.Expr
+	dsl, err := e.convertWhereExpr(&exprInside, false, expr)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertAndExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {

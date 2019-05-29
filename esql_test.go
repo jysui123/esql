@@ -13,11 +13,6 @@ var testDsls = `dsls.txt`
 var testDslsPretty = `dslsPretty.txt`
 var groundTruth = ``
 
-var validQueries = map[string]string{
-	"select * from inspections":                                       `{"query": {"match_all": {}}}`,
-	"select col1 from inspections where business_postal_code = 94107": `{"query" : {"bool" : {"filter" : [{"match_phrase" : {"business_postal_code" : {"query" : "94107"}}}]}}}`,
-}
-
 var whiteList = map[string]interface{}{
 	"business_code":  []int{91111, 94102, 33309},
 	"business_state": []string{"GA", "NH"},

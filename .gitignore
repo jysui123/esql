@@ -15,3 +15,5 @@
 *.txt
 dummy
 .vscode
+
+!sqls.txt

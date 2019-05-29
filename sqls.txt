@@ -1,0 +1,21 @@
+SELECT * FROM inspections
+SELECT * FROM inspections WHERE business_postal_code = 94104
+SELECT * FROM inspections WHERE business_address = '315 California St'
+SELECT * FROM inspections WHERE (business_address = '315 California St')
+SELECT * FROM inspections WHERE ((business_address = '315 California St'))
+SELECT * FROM inspections WHERE business_address != '315 California St'
+SELECT * FROM inspections WHERE (business_address != '315 California St')
+SELECT * FROM inspections WHERE ((business_address != '315 California St'))
+SELECT * FROM inspections WHERE business_postal_code = 94104 AND business_id = 24936
+SELECT * FROM inspections WHERE business_postal_code = 94104 OR business_address = '315 California St'
+SELECT * FROM inspections WHERE business_address != '315 California St' AND business_postal_code = 94107 OR business_postal_code = 94104
+SELECT * FROM inspections WHERE business_address != '315 California St' AND (business_postal_code = 94107 OR business_postal_code = 94104)
+SELECT * FROM inspections WHERE (business_address != '315 California St' AND business_postal_code = 94107) OR business_postal_code = 94104
+SELECT * FROM inspections WHERE ((business_address != '315 California St') AND (business_postal_code = 94107 OR business_postal_code = 94104))
+SELECT * FROM inspections WHERE NOT business_address != '315 California St'
+SELECT * FROM inspections WHERE NOT NOT business_address != '315 California St'
+SELECT * FROM inspections WHERE NOT NOT NOT business_address != '315 California St'
+SELECT * FROM inspections WHERE NOT business_address != '315 California St' AND business_postal_code = 94107 OR business_postal_code = 94104
+SELECT * FROM inspections WHERE business_address != '315 California St' AND NOT (business_postal_code = 94107 OR business_postal_code = 94104)
+SELECT * FROM inspections WHERE (business_address != '315 California St' AND business_postal_code = 94107) OR NOT business_postal_code = 94104
+SELECT * FROM inspections WHERE NOT ((business_address != '315 California St') AND (NOT business_postal_code = 94107 OR business_postal_code = 94104))
