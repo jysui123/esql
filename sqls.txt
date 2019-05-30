@@ -1,21 +1,21 @@
-SELECT * FROM inspections
-SELECT * FROM inspections WHERE business_postal_code = 94104
-SELECT * FROM inspections WHERE business_address = '315 California St'
-SELECT * FROM inspections WHERE (business_address = '315 California St')
-SELECT * FROM inspections WHERE ((business_address = '315 California St'))
-SELECT * FROM inspections WHERE business_address != '315 California St'
-SELECT * FROM inspections WHERE (business_address != '315 California St')
-SELECT * FROM inspections WHERE ((business_address != '315 California St'))
-SELECT * FROM inspections WHERE business_postal_code = 94104 AND business_id = 24936
-SELECT * FROM inspections WHERE business_postal_code = 94104 OR business_address = '315 California St'
-SELECT * FROM inspections WHERE business_address != '315 California St' AND business_postal_code = 94107 OR business_postal_code = 94104
-SELECT * FROM inspections WHERE business_address != '315 California St' AND (business_postal_code = 94107 OR business_postal_code = 94104)
-SELECT * FROM inspections WHERE (business_address != '315 California St' AND business_postal_code = 94107) OR business_postal_code = 94104
-SELECT * FROM inspections WHERE ((business_address != '315 California St') AND (business_postal_code = 94107 OR business_postal_code = 94104))
-SELECT * FROM inspections WHERE NOT business_address != '315 California St'
-SELECT * FROM inspections WHERE NOT NOT business_address != '315 California St'
-SELECT * FROM inspections WHERE NOT NOT NOT business_address != '315 California St'
-SELECT * FROM inspections WHERE NOT business_address != '315 California St' AND business_postal_code = 94107 OR business_postal_code = 94104
-SELECT * FROM inspections WHERE business_address != '315 California St' AND NOT (business_postal_code = 94107 OR business_postal_code = 94104)
-SELECT * FROM inspections WHERE (business_address != '315 California St' AND business_postal_code = 94107) OR NOT business_postal_code = 94104
-SELECT * FROM inspections WHERE NOT ((business_address != '315 California St') AND (NOT business_postal_code = 94107 OR business_postal_code = 94104))
+SELECT * FROM test
+SELECT * FROM test WHERE colB = 'ab'
+SELECT * FROM test WHERE colD = 10
+SELECT * FROM test WHERE (colD = 10)
+SELECT * FROM test WHERE ((colD = 10))
+SELECT * FROM test WHERE colD != 10
+SELECT * FROM test WHERE (colD != 10)
+SELECT * FROM test WHERE ((colD != 10))
+SELECT * FROM test WHERE colB = 'ab' AND date = 2016 AND colB = 'ab'
+SELECT * FROM test WHERE colB = 'ab' OR colD = 10
+SELECT * FROM test WHERE colD != 10 AND colB = 'bc' OR colB = 'ab'
+SELECT * FROM test WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab')
+SELECT * FROM test WHERE (colD != 10 AND colB = 'bc') OR colB = 'ab'
+SELECT * FROM test WHERE ((colD != 10) AND (colB = 'bc' OR colB = 'ab'))
+SELECT * FROM test WHERE NOT colD != 10
+SELECT * FROM test WHERE NOT NOT colD != 10
+SELECT * FROM test WHERE NOT NOT NOT colD != 10
+SELECT * FROM test WHERE NOT colD != 10 AND colB = 'bc' OR colB = 'ab'
+SELECT * FROM test WHERE colD != 10 AND NOT (colB = 'bc' OR colB = 'ab')
+SELECT * FROM test WHERE (colD != 10 AND colB = 'bc') OR NOT colB = 'ab'
+SELECT * FROM test WHERE NOT ((colD != 10) AND (NOT colB = 'bc' OR colB = 'ab'))

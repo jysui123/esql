@@ -4,7 +4,7 @@ import unittest
 
 class TestGeneratedDSL(unittest.TestCase):
     urlSQL = 'http://localhost:9200/_xpack/sql/translate'
-    url = 'http://localhost:9200/inspections/_search'
+    url = 'http://localhost:9200/test/_search?size=100'
     headers = {"Content-type": "application/json"}
     sqlFileName = 'sqls.txt'
     dslFileName = 'dsls.txt'
@@ -37,6 +37,8 @@ class TestGeneratedDSL(unittest.TestCase):
                 officialIds.append(officialRes['hits']['hits'][i]['_id'])
             for i in range(res['hits']['total']):
                 ids.append(res['hits']['hits'][i]['_id'])
+            # print(officialIds)
+            # print("\n******\n")
             officialIds = sorted(officialIds)
             ids = sorted(ids)
             for i in range(len(ids)):
