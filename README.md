@@ -60,6 +60,13 @@ Current Cadence query request processing steps are listed below:
 This project aims at dealing all these addtional processing steps and provides an api to generate DSL in one step for visibility usage in Cadence.
 
 
+## Testing Module
+We are using elasticsearch's SQL translate API as a reference in testing. Testing contains 3 basic steps:
+- using elasticsearch's SQL translate API to translate sql to dsl
+- using our library to convert sql to dsl
+- query local elasticsearch server with both dsls, check the results are identical
+
+
 ## ES V2.x vs ES V6.5
 |Item|ES V2.x|ES v6.5|
 |:-:|:-:|:-:|

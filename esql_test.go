@@ -2,7 +2,9 @@ package esql
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -32,6 +34,23 @@ func TestGenDSL(t *testing.T) {
 		sqls = append(sqls, scanner.Text())
 	}
 	f.Close()
+
+	// optional: provide expected dsl to compare
+	compareGroundTruthDsl := false
+	var groundTruthDsls []string
+	fg, err := os.Open(groundTruth)
+	if err == nil {
+		compareGroundTruthDsl = true
+		gscanner := bufio.NewScanner(fg)
+		gscanner.Split(bufio.ScanLines)
+		for gscanner.Scan() {
+			groundTruthDsls = append(groundTruthDsls, scanner.Text())
+		}
+		if len(groundTruthDsls) != len(sqls) {
+			t.Error("number of ground truth dsl and sql test cases not match")
+		}
+	}
+
 	f, err = os.Create(testDsls)
 	fp, err := os.Create(testDslsPretty)
 	if err != nil {
@@ -42,6 +61,23 @@ func TestGenDSL(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
+		// check ground truth dsls if provided
+		if compareGroundTruthDsl {
+			var dsljson, gtDsljson map[string]interface{}
+			err = json.Unmarshal([]byte(dsl), &dsljson)
+			if err != nil {
+				t.Error(err)
+			}
+			err = json.Unmarshal([]byte(groundTruthDsls[i]), &gtDsljson)
+			if err != nil {
+				t.Error(err)
+			}
+			if !reflect.DeepEqual(dsljson, gtDsljson) {
+				t.Error("generated dsl does not match with ground truth dsl", i)
+			}
+		}
+
 		f.WriteString(dsl)
 		f.WriteString("\n")
 		dslPretty, err := e.ConvertPretty(sql)
