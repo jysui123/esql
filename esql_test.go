@@ -48,7 +48,7 @@ func TestGenDSL(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		fp.WriteString("\n**************************\n" + strconv.Itoa(i) + "th query\n")
+		fp.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
 		fp.WriteString(dslPretty)
 	}
 	f.Close()

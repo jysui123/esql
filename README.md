@@ -7,8 +7,10 @@ Support following features:
 - [x] comparison operators: =, !=, <, >, <=, >=
 - [x] boolean operators: AND, OR, NOT
 - [x] parenthesis: ()
+- [ ] auto testing
 - [ ] special handling: time format
-- [ ] survey: docvalue_fields in elastic search api
+- [ ] keyword: LIMIT, FROM, SIZE
+- [ ] pagination, search after
 
 ### M2
 - [ ] missing check
@@ -19,14 +21,13 @@ Support following features:
 ### M3
 - [ ] keyword: ORDER BY
 - [ ] keyword: GROUP BY
-- [ ] keyword: LIMIT
 
 ### M4
 - [ ] key whitelist filtering
 - [ ] column name filtering
 
 ### Misc
-- [ ] optimization
+- [ ] optimization: docvalue_fields, term&keyword
 - [ ] documentation
 
 ## Install and Testing
@@ -36,6 +37,6 @@ Support following features:
 - feed in some data to the server by either kibana or cli
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - run `./test_all.sh` to run all the test cases
-- generated dsl are stored in `dsls.txt` and `dslsPretty.txt`
+- generated dsls are stored in `dsls.txt` and `dslsPretty.txt`
 
 ## ESV2.x to ESV6.5
