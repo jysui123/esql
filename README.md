@@ -7,6 +7,7 @@
 - [x] boolean operators: AND, OR, NOT
 - [x] parenthesis: ()
 - [x] auto testing
+- [ ] setup git branch for pull request and code review
 - [ ] special handling: time format
 - [ ] keyword: LIMIT, SIZE
 - [ ] pagination, search after
