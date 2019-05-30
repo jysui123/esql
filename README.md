@@ -6,9 +6,9 @@
 - [x] comparison operators: =, !=, <, >, <=, >=
 - [x] boolean operators: AND, OR, NOT
 - [x] parenthesis: ()
-- [ ] auto testing
+- [x] auto testing
 - [ ] special handling: time format
-- [ ] keyword: LIMIT, FROM, SIZE
+- [ ] keyword: LIMIT, SIZE
 - [ ] pagination, search after
 
 ### M2
@@ -18,6 +18,7 @@
 - [ ] keyword: IN, NOT IN
 
 ### M3
+- [ ] keyword: FROM
 - [ ] keyword: ORDER BY
 - [ ] keyword: GROUP BY
 
@@ -33,7 +34,7 @@
 ## Install and Testing
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
 - run `chmod u+x start_service.sh test_all.sh`
-- run `./start_service.sh` to start a local elasticsearch server
+- run `./start_service.sh` to start a local elasticsearch server (may need modification to specify the path to your elasticseach executable)
 - run `python gen_test_data.py -cmi` to create a test index and feed in test data
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - run `./test_all.sh` to run all the test cases
