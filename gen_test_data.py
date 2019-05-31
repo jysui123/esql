@@ -23,7 +23,7 @@ schema = {
 }
 
 def genRandStr(letters="abc", len=3):
-    return "".join(random.choice(letters) for i in range(len))
+    return "".join(random.choice(letters) for i in range(len)) if random.randint(0, 5) > 0 else ""
 
 def padZero(s, length=2):
     return '0'*(length-len(s)) + s
@@ -44,7 +44,7 @@ def genDate(precision="d", startYear=2010):
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
     if precision in ["ms"]:
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 999)), 3)
-    return dateStr
+    return dateStr if random.randint(0, 5) > 0 else ""
 
 
 def insertData():

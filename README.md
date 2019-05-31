@@ -7,11 +7,12 @@
 - [x] boolean operators: AND, OR, NOT
 - [x] parenthesis: ()
 - [x] auto testing
-- [ ] setup git branch for pull request and code review
-- [ ] keyword: LIMIT, SIZE
+- [x] setup git branch for pull request and code review
+- [x] keyword: LIMIT, SIZE
+- [ ] depedencies management and golint checking
 
 ### M2
-- [ ] missing check
+- [ ] keyword: IS NULL, IS NOT NULL (missing check)
 - [ ] keyword: BETWEEN
 - [ ] keyword: LIKE, NOT LIKE
 - [ ] keyword: IN, NOT IN
@@ -64,6 +65,9 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 - using elasticsearch's SQL translate API to translate sql to dsl
 - using our library to convert sql to dsl
 - query local elasticsearch server with both dsls, check the results are identical
+
+There are some specific features not covered in testing yet:
+- `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different resutls
 
 
 ## ES V2.x vs ES V6.5

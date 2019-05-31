@@ -220,6 +220,8 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gte" : "%v"}}}`, lhsStr, rhsStr)
 	case "!=":
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
+	case "<>":
+		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err
