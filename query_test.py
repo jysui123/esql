@@ -33,16 +33,15 @@ class TestGeneratedDSL(unittest.TestCase):
             # check all the row id matches
             officialIds = []
             ids = []
-            for i in range(officialRes['hits']['total']):
-                officialIds.append(officialRes['hits']['hits'][i]['_id'])
-            for i in range(res['hits']['total']):
-                ids.append(res['hits']['hits'][i]['_id'])
-            # print(officialIds)
-            # print("\n******\n")
+            for j in range(officialRes['hits']['total']):
+                officialIds.append(officialRes['hits']['hits'][j]['_id'])
+            for j in range(res['hits']['total']):
+                ids.append(res['hits']['hits'][j]['_id'])
             officialIds = sorted(officialIds)
             ids = sorted(ids)
-            for i in range(len(ids)):
-                self.assertEqual(ids[i], officialIds[i], 'document id of query {} not match'.format(i+1))
+            for j in range(len(ids)):
+                self.assertEqual(ids[j], officialIds[j], 'document id of query {} not match'.format(i + 1))
+            print('query {} returns {} documents, pass'.format(i+1, len(ids)))
 
 
 if __name__ == '__main__':

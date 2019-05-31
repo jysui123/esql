@@ -3,6 +3,7 @@ package esql
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -21,6 +22,7 @@ var whiteList = map[string]interface{}{
 }
 
 func TestGenDSL(t *testing.T) {
+	fmt.Println("Start generating DSL ...")
 	var e ESql
 	e.init(whiteList)
 	f, err := os.Open(testCases)
@@ -86,7 +88,9 @@ func TestGenDSL(t *testing.T) {
 		}
 		fp.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
 		fp.WriteString(dslPretty)
+		fmt.Printf("query %d dsl generated\n", i+1)
 	}
 	f.Close()
 	fp.Close()
+	fmt.Println("DSL generated\n---------------------------------------------------------------------")
 }
