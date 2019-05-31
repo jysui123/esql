@@ -67,7 +67,7 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 - query local elasticsearch server with both dsls, check the results are identical
 
 There are some specific features not covered in testing yet:
-- `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different resutls
+- `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
 
 
 ## ES V2.x vs ES V6.5
