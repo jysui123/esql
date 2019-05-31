@@ -8,7 +8,6 @@
 - [x] parenthesis: ()
 - [x] auto testing
 - [ ] setup git branch for pull request and code review
-- [ ] special handling: time format
 - [ ] keyword: LIMIT, SIZE
 
 ### M2
@@ -23,6 +22,7 @@
 - [ ] keyword: GROUP BY
 
 ### M4
+- [ ] special handling: ExecutionTime field
 - [ ] key whitelist filtering
 - [ ] column name filtering
 - [ ] pagination, search after
@@ -37,7 +37,6 @@
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
 - run `chmod u+x start_service.sh test_all.sh`
 - run `./start_service.sh` to start a local elasticsearch server (may need modification to specify the path to your elasticseach executable)
-- run `python gen_test_data.py -cmi` to create a test index and feed in test data
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - run `./test_all.sh` to run all the test cases
 - generated dsls are stored in `dsls.txt` and `dslsPretty.txt`
@@ -57,7 +56,7 @@ Current Cadence query request processing steps are listed below:
 - modify sorting field
 - setup search after for pagination
 
-This project aims at dealing all these addtional processing steps and provides an api to generate DSL in one step for visibility usage in Cadence.
+This project aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
 
 
 ## Testing Module

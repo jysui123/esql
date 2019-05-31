@@ -102,6 +102,21 @@ func (e *ESql) convertWhereExpr(expr *sqlparser.Expr, topLevel bool, parent *sql
 		return e.convertWhereExpr(&boolExpr, topLevel, expr)
 	case *sqlparser.NotExpr:
 		return e.convertNotExpr(expr, topLevel, parent)
+	case *sqlparser.RangeCond:
+		rangeCond := (*expr).(*sqlparser.RangeCond)
+		lhs, ok := rangeCond.Left.(*sqlparser.ColName)
+		if !ok {
+			return "", errors.New("esql: invalid range column name")
+		}
+		lhsStr := sqlparser.String(lhs)
+		fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
+		toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
+
+		dsl := fmt.Sprintf(`{"range" : {"%v" : {"from" : "%v", "to" : "%v"}}}`, lhsStr, fromStr, toStr)
+		if topLevel {
+			dsl = fmt.Sprintf(`{"bool" : {"must" : [%v]}}`, dsl)
+		}
+		return dsl, nil
 	default:
 		err = fmt.Errorf(`esql: %T expression not supported in where clause`, *expr)
 		return "", err
