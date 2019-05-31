@@ -16,4 +16,8 @@
 dummy
 .vscode
 
+# Test cases
 !sqls.txt
+
+# dependencies
+vendor
