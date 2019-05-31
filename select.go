@@ -117,6 +117,8 @@ func (e *ESql) convertWhereExpr(expr *sqlparser.Expr, topLevel bool, parent *sql
 			dsl = fmt.Sprintf(`{"bool" : {"must" : [%v]}}`, dsl)
 		}
 		return dsl, nil
+	case *sqlparser.IsExpr:
+		return e.convertIsExpr(expr, topLevel, parent)
 	default:
 		err = fmt.Errorf(`esql: %T expression not supported in where clause`, *expr)
 		return "", err
@@ -187,6 +189,27 @@ func (e *ESql) convertOrExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlpar
 	return fmt.Sprintf(`{"bool" : {"should" : [%v]}}`, dsl), nil
 }
 
+func (e *ESql) convertIsExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
+	isExpr := (*expr).(*sqlparser.IsExpr)
+	colName, ok := isExpr.Expr.(*sqlparser.ColName)
+	if !ok {
+		return "", errors.New("esql: is expression only support colname missing check")
+	}
+	lhsStr := sqlparser.String(colName)
+	lhsStr = strings.Replace(lhsStr, "`", "", -1)
+	dsl := ""
+	// TODO: possible optimization: flatten chained is expressions
+	switch isExpr.Operator {
+	case sqlparser.IsNullStr:
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"exists": {"field": "%v"}}}}`, lhsStr)
+	case sqlparser.IsNotNullStr:
+		dsl = fmt.Sprintf(`{"exists": {"field": "%v"}}`, lhsStr)
+	default:
+		return "", errors.New("esql: is expression only support is null and is not null")
+	}
+	return dsl, nil
+}
+
 func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
 	// extract lhs, and check lhs is a colName
 	comparisonExpr := (*expr).(*sqlparser.ComparisonExpr)
@@ -199,7 +222,6 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 
 	// extract rhs
-	// ? pass by pointer?
 	rhsStr, err := e.convertValExpr(&comparisonExpr.Right)
 	if err != nil {
 		return "", err
@@ -218,10 +240,12 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gt" : "%v"}}}`, lhsStr, rhsStr)
 	case ">=":
 		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gte" : "%v"}}}`, lhsStr, rhsStr)
+	case "<>":
+		fallthrough
 	case "!=":
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
-	case "<>":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
+	case "in":
+
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err

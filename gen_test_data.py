@@ -6,6 +6,7 @@ import random
 import sys
 
 nRows = 100
+missingPercent = 20
 url = 'http://localhost:9200/test'
 indexingRoute = '/_mapping/_doc'
 postDataRoute = '/_doc'
@@ -23,7 +24,7 @@ schema = {
 }
 
 def genRandStr(letters="abc", len=3):
-    return "".join(random.choice(letters) for i in range(len)) if random.randint(0, 5) > 0 else ""
+    return "".join(random.choice(letters) for i in range(len)) if random.randint(0, 99) > missingPercent else ""
 
 def padZero(s, length=2):
     return '0'*(length-len(s)) + s
@@ -43,8 +44,8 @@ def genDate(precision="d", startYear=2010):
     if precision in ["s", "ms"]:
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
     if precision in ["ms"]:
-        dateStr = dateStr + ":" + padZero(str(random.randint(0, 999)), 3)
-    return dateStr if random.randint(0, 5) > 0 else ""
+        dateStr = dateStr + "." + padZero(str(random.randint(0, 999)), 3)
+    return dateStr if random.randint(0, 99) > missingPercent else ""
 
 
 def insertData():
