@@ -23,7 +23,29 @@ schema = {
 }
 
 def genRandStr(letters="abc", len=3):
-    return "".join(random.choice(letters) for i in range(len))
+    return "".join(random.choice(letters) for i in range(len)) if random.randint(0, 5) > 0 else ""
+
+def padZero(s, length=2):
+    return '0'*(length-len(s)) + s
+
+def genDate(precision="d", startYear=2010):
+    dateStr = ""
+    if precision in ["y", "M", "d", "h", "m", "s", "ms"]:
+        dateStr = str(startYear + random.randint(0, 5))
+    if precision in ["M", "d", "h", "m", "s", "ms"]:
+        dateStr = dateStr + "-" + padZero(str(random.randint(1, 12)))
+    if precision in ["d", "h", "m", "s", "ms"]:
+        dateStr = dateStr + "-" + padZero(str(random.randint(1, 28)))
+    if precision in ["h", "m", "s", "ms"]:
+        dateStr = dateStr + "T" + padZero(str(random.randint(0, 23)))
+    if precision in ["m", "s", "ms"]:
+        dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
+    if precision in ["s", "ms"]:
+        dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
+    if precision in ["ms"]:
+        dateStr = dateStr + ":" + padZero(str(random.randint(0, 999)), 3)
+    return dateStr if random.randint(0, 5) > 0 else ""
+
 
 def insertData():
     for i in range(nRows):
@@ -32,7 +54,7 @@ def insertData():
         colC = colA + " " + genRandStr() + " " + genRandStr()
         colD = random.randint(0, 20)
         colE = random.uniform(0, 20)
-        date = "2016"
+        date = genDate('s')
 
         payload = {"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date}
         resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
