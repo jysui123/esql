@@ -5,8 +5,6 @@ import json
 import random
 import sys
 
-nRows = 100
-missingPercent = 20
 url = 'http://localhost:9200/test'
 indexingRoute = '/_mapping/_doc'
 postDataRoute = '/_doc'
@@ -47,18 +45,14 @@ def genDate(precision="d", startYear=2010):
         dateStr = dateStr + "." + padZero(str(random.randint(0, 999)), 3)
     return dateStr
 
-def genPayload(*fields):
+def genPayload(fields, missingPercent=20):
     payload = {}
-    i = 0
-    while i < len(fields):
-        field = fields[i]
-        content = fields[i + 1]
+    for k, v in fields.iteritems():
         if random.randint(1, 100) > missingPercent:
-            payload[field] = content
-        i = i + 2
+            payload[k] = v
     return payload
 
-def insertData():
+def insertData(nRows=100):
     for i in range(nRows):
         colA = genRandStr()
         colB = genRandStr("ab", 2)
@@ -67,7 +61,7 @@ def insertData():
         colE = random.uniform(0, 20)
         date = genDate('s')
 
-        payload = genPayload("colA", colA, "colB", colB, "colC", colC, "colD", colD, "colE", colE, "date", date)
+        payload = genPayload({"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date})
         resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
         if resp == None or resp.status_code != 201:
             print("cannot insert data: {}: {}\n".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
