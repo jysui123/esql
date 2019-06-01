@@ -24,7 +24,7 @@ schema = {
 }
 
 def genRandStr(letters="abc", len=3):
-    return "".join(random.choice(letters) for i in range(len)) if random.randint(0, 99) > missingPercent else ""
+    return "".join(random.choice(letters) for i in range(len))
 
 def padZero(s, length=2):
     return '0'*(length-len(s)) + s
@@ -45,8 +45,18 @@ def genDate(precision="d", startYear=2010):
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
     if precision in ["ms"]:
         dateStr = dateStr + "." + padZero(str(random.randint(0, 999)), 3)
-    return dateStr if random.randint(0, 99) > missingPercent else ""
+    return dateStr
 
+def genPayload(*fields):
+    payload = {}
+    i = 0
+    while i < len(fields):
+        field = fields[i]
+        content = fields[i + 1]
+        if random.randint(1, 100) > missingPercent:
+            payload[field] = content
+        i = i + 2
+    return payload
 
 def insertData():
     for i in range(nRows):
@@ -57,7 +67,7 @@ def insertData():
         colE = random.uniform(0, 20)
         date = genDate('s')
 
-        payload = {"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date}
+        payload = genPayload("colA", colA, "colB", colB, "colC", colC, "colD", colD, "colE", colE, "date", date)
         resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
         if resp == None or resp.status_code != 201:
             print("cannot insert data: {}: {}\n".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
@@ -81,7 +91,7 @@ def deleteIndex():
 
 def createIndex():
     resp = requests.put(url)
-    if resp == None:
+    if resp == None or resp.status_code != 200:
         print("cannot create index")
     print("successfully create index")
 
