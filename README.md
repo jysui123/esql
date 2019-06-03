@@ -14,8 +14,8 @@
 ### M2
 - [x] keyword: IS NULL, IS NOT NULL (missing check)
 - [x] keyword: BETWEEN
+- [x] keyword: IN, NOT IN
 - [ ] keyword: LIKE, NOT LIKE
-- [ ] keyword: IN, NOT IN
 
 ### M3
 - [ ] select specific columns
@@ -37,8 +37,9 @@
 ## Installing and Testing
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
 - run `chmod u+x start_service.sh test_all.sh`
-- run `./start_service.sh` to start a local elasticsearch server (may need modification to specify the path to your elasticseach executable)
+- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
+- optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
 - run `./test_all.sh` to run all the test cases
 - generated dsls are stored in `dsls.txt` and `dslsPretty.txt`
 
@@ -68,6 +69,7 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
+- `LIKE` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard % and _)
 
 ## esql vs elasticsql
 |Item|esql|elasticsql|
@@ -75,7 +77,8 @@ There are some specific features not covered in testing yet:
 |scoring|using "filter" to avoid scoring analysis and save time|using "must" which calculates scores|
 |missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
 |NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
-|LIKE expression|using "wildcard", support '%', '_', smallest matching unit is character|using "match_phrase", does not support '_' and the smallest match unit is space separated word|
+|LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
+|optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 
 ## ES V2.x vs ES V6.5
 |Item|ES V2.x|ES v6.5|
