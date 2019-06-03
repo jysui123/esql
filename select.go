@@ -314,6 +314,24 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 		fallthrough
 	case "!=":
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
+	case "in":
+		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
+		rhsStr = strings.Trim(rhsStr, "(")
+		rhsStr = strings.Trim(rhsStr, ")")
+		dsl = fmt.Sprintf(`{"terms" : {"%v" : [%v]}}`, lhsStr, rhsStr)
+	case "not in":
+		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
+		rhsStr = strings.Trim(rhsStr, "(")
+		rhsStr = strings.Trim(rhsStr, ")")
+		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"terms" : {"%v" : [%v]}}}}`, lhsStr, rhsStr)
+	case "like":
+		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
+		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
+		dsl = fmt.Sprintf(`{"wildcard" : {"%v" : {"wildcard": "%v"}}}`, lhsStr, rhsStr)
+	case "not like":
+		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
+		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
+		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"wildcard" : {"%v" : {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err
@@ -330,8 +348,10 @@ func (e *ESql) convertValExpr(expr *sqlparser.Expr) (dsl string, err error) {
 	case *sqlparser.SQLVal:
 		dsl = sqlparser.String(*expr)
 		dsl = strings.Trim(dsl, `'`)
+	case sqlparser.ValTuple:
+		dsl = sqlparser.String(*expr)
 	default:
-		err = errors.New("esql: not supported rhs expression")
+		err = fmt.Errorf("esql: not supported rhs expression %T", *expr)
 		return "", err
 	}
 	return dsl, nil

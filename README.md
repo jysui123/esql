@@ -75,6 +75,7 @@ There are some specific features not covered in testing yet:
 |scoring|using "filter" to avoid scoring analysis and save time|using "must" which calculates scores|
 |missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
 |NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
+|LIKE expression|using "wildcard", support '%', '_', smallest matching unit is character|using "match_phrase", does not support '_' and the smallest match unit is space separated word|
 
 ## ES V2.x vs ES V6.5
 |Item|ES V2.x|ES v6.5|
