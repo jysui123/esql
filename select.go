@@ -92,7 +92,7 @@ func (e *ESql) convertWhereExpr(expr *sqlparser.Expr, topLevel bool, parent *sql
 
 	switch (*expr).(type) {
 	case *sqlparser.ComparisonExpr:
-		return e.convertComparisionExpr(expr, topLevel, parent)
+		return e.convertComparisionExpr(expr, topLevel, parent, false)
 	case *sqlparser.AndExpr:
 		return e.convertAndExpr(expr, topLevel, parent)
 	case *sqlparser.OrExpr:
@@ -114,25 +114,55 @@ func (e *ESql) convertWhereExpr(expr *sqlparser.Expr, topLevel bool, parent *sql
 
 		dsl := fmt.Sprintf(`{"range" : {"%v" : {"from" : "%v", "to" : "%v"}}}`, lhsStr, fromStr, toStr)
 		if topLevel {
-			dsl = fmt.Sprintf(`{"bool" : {"must" : [%v]}}`, dsl)
+			dsl = fmt.Sprintf(`{"bool" : {"filter" : [%v]}}`, dsl)
 		}
 		return dsl, nil
 	case *sqlparser.IsExpr:
-		return e.convertIsExpr(expr, topLevel, parent)
+		return e.convertIsExpr(expr, topLevel, parent, false)
 	default:
-		err = fmt.Errorf(`esql: %T expression not supported in where clause`, *expr)
+		err = fmt.Errorf(`esql: %T expression not supported in WHERE clause`, *expr)
 		return "", err
 	}
 }
 
+// ! dsl must_not is not an equivalent to sql NOT, should convert the inside expression accordingly
 func (e *ESql) convertNotExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
 	notExpr := (*expr).(*sqlparser.NotExpr)
 	exprInside := notExpr.Expr
-	dsl, err := e.convertWhereExpr(&exprInside, false, expr)
-	if err != nil {
-		return "", err
+	switch (exprInside).(type) {
+	case *sqlparser.NotExpr:
+		expr1 := exprInside.(*sqlparser.NotExpr)
+		expr2 := expr1.Expr
+		return e.convertWhereExpr(&expr2, topLevel, parent)
+	case *sqlparser.AndExpr:
+		expr1 := exprInside.(*sqlparser.AndExpr)
+		var exprLeft sqlparser.Expr = &sqlparser.NotExpr{Expr: expr1.Left}
+		var exprRight sqlparser.Expr = &sqlparser.NotExpr{Expr: expr1.Right}
+		var expr2 sqlparser.Expr = &sqlparser.OrExpr{Left: exprLeft, Right: exprRight}
+		return e.convertOrExpr(&expr2, topLevel, parent)
+	case *sqlparser.OrExpr:
+		expr1 := exprInside.(*sqlparser.OrExpr)
+		var exprLeft sqlparser.Expr = &sqlparser.NotExpr{Expr: expr1.Left}
+		var exprRight sqlparser.Expr = &sqlparser.NotExpr{Expr: expr1.Right}
+		var expr2 sqlparser.Expr = &sqlparser.AndExpr{Left: exprLeft, Right: exprRight}
+		return e.convertAndExpr(&expr2, topLevel, parent)
+	case *sqlparser.ParenExpr:
+		expr1 := exprInside.(*sqlparser.ParenExpr)
+		exprBody := expr1.Expr
+		var expr2 sqlparser.Expr = &sqlparser.NotExpr{Expr: exprBody}
+		return e.convertNotExpr(&expr2, topLevel, parent)
+	case *sqlparser.ComparisonExpr:
+		return e.convertComparisionExpr(&exprInside, topLevel, parent, true)
+	case *sqlparser.IsExpr:
+		return e.convertIsExpr(&exprInside, topLevel, parent, true)
+	default:
+		// for BETWEEN expr
+		dsl, err := e.convertWhereExpr(&exprInside, false, expr)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl), nil
 	}
-	return fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertAndExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
@@ -163,9 +193,9 @@ func (e *ESql) convertAndExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlpa
 }
 
 func (e *ESql) convertOrExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
-	andExpr := (*expr).(*sqlparser.OrExpr)
-	lhsExpr := andExpr.Left
-	rhsExpr := andExpr.Right
+	orExpr := (*expr).(*sqlparser.OrExpr)
+	lhsExpr := orExpr.Left
+	rhsExpr := orExpr.Right
 
 	lhsStr, err := e.convertWhereExpr(&lhsExpr, false, expr)
 	if err != nil {
@@ -189,7 +219,7 @@ func (e *ESql) convertOrExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlpar
 	return fmt.Sprintf(`{"bool" : {"should" : [%v]}}`, dsl), nil
 }
 
-func (e *ESql) convertIsExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
+func (e *ESql) convertIsExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr, not bool) (string, error) {
 	isExpr := (*expr).(*sqlparser.IsExpr)
 	colName, ok := isExpr.Expr.(*sqlparser.ColName)
 	if !ok {
@@ -199,7 +229,18 @@ func (e *ESql) convertIsExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlpar
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 	dsl := ""
 	// TODO: possible optimization: flatten chained is expressions
-	switch isExpr.Operator {
+	op := isExpr.Operator
+	if not {
+		switch isExpr.Operator {
+		case sqlparser.IsNullStr:
+			op = sqlparser.IsNotNullStr
+		case sqlparser.IsNotNullStr:
+			op = sqlparser.IsNullStr
+		default:
+			return "", errors.New("esql: is expression only support is null and is not null")
+		}
+	}
+	switch op {
 	case sqlparser.IsNullStr:
 		dsl = fmt.Sprintf(`{"bool": {"must_not": {"exists": {"field": "%v"}}}}`, lhsStr)
 	case sqlparser.IsNotNullStr:
@@ -210,7 +251,7 @@ func (e *ESql) convertIsExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlpar
 	return dsl, nil
 }
 
-func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr) (string, error) {
+func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, parent *sqlparser.Expr, not bool) (string, error) {
 	// extract lhs, and check lhs is a colName
 	comparisonExpr := (*expr).(*sqlparser.ComparisonExpr)
 	colName, ok := comparisonExpr.Left.(*sqlparser.ColName)
@@ -226,10 +267,39 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 	if err != nil {
 		return "", err
 	}
-
+	op := comparisonExpr.Operator
+	if not {
+		switch comparisonExpr.Operator {
+		case "=":
+			op = "!="
+		case "<":
+			op = ">="
+		case "<=":
+			op = ">"
+		case ">":
+			op = "<="
+		case ">=":
+			op = "<"
+		case "<>":
+			fallthrough
+		case "!=":
+			op = "="
+		case "in":
+			op = "not in"
+		case "not in":
+			op = "in"
+		case "like":
+			op = "not like"
+		case "not like":
+			op = "like"
+		default:
+			err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
+			return "", err
+		}
+	}
 	// generate dsl according to operator
 	var dsl string
-	switch comparisonExpr.Operator {
+	switch op {
 	case "=":
 		dsl = fmt.Sprintf(`{"match_phrase" : {"%v" : {"query" : "%v"}}}`, lhsStr, rhsStr)
 	case "<":
@@ -244,8 +314,6 @@ func (e *ESql) convertComparisionExpr(expr *sqlparser.Expr, topLevel bool, paren
 		fallthrough
 	case "!=":
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
-	case "in":
-
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err

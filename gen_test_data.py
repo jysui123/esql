@@ -52,7 +52,7 @@ def genPayload(fields, missingPercent=20):
             payload[k] = v
     return payload
 
-def insertData(nRows=100):
+def insertData(nRows, missingPercent):
     for i in range(nRows):
         colA = genRandStr()
         colB = genRandStr("ab", 2)
@@ -61,7 +61,7 @@ def insertData(nRows=100):
         colE = random.uniform(0, 20)
         date = genDate('s')
 
-        payload = genPayload({"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date})
+        payload = genPayload({"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date}, missingPercent)
         resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
         if resp == None or resp.status_code != 201:
             print("cannot insert data: {}: {}\n".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
@@ -89,7 +89,15 @@ def createIndex():
         print("cannot create index")
     print("successfully create index")
 
-
+nRows = 200
+missingPercent = 20
+if len(sys.argv) > 4:
+    print ("too many arguments")
+    exit(1)
+if len(sys.argv) > 2:
+    nRows = int(sys.argv[2])
+if len(sys.argv) > 3:
+    missingPercent = int(sys.argv[3])
 for i in range(len(sys.argv[1])):
     if i == 0:
         if sys.argv[1][i] != '-':
@@ -97,7 +105,7 @@ for i in range(len(sys.argv[1])):
             exit(1)
     else:
         if sys.argv[1][i] == 'i':
-            insertData()
+            insertData(nRows, missingPercent)
         elif sys.argv[1][i] == 'd':
             deleteIndex()
         elif sys.argv[1][i] == 'm':

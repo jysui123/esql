@@ -9,11 +9,11 @@
 - [x] auto testing
 - [x] setup git branch for pull request and code review
 - [x] keyword: LIMIT, SIZE
-- [ ] depedencies management and golint checking
+- [x] depedencies management and golint checking
 
 ### M2
-- [ ] keyword: IS NULL, IS NOT NULL (missing check)
-- [ ] keyword: BETWEEN
+- [x] keyword: IS NULL, IS NOT NULL (missing check)
+- [x] keyword: BETWEEN
 - [ ] keyword: LIKE, NOT LIKE
 - [ ] keyword: IN, NOT IN
 
@@ -69,8 +69,14 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
 
+## esql vs elasticsql
+|Item|esql|elasticsql|
+|:-:|:-:|:-:|
+|scoring|using "filter" to avoid scoring analysis and save time|using "must" which calculates scores|
+|missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
+|NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
 
 ## ES V2.x vs ES V6.5
 |Item|ES V2.x|ES v6.5|
 |:-:|:-:|:-:|
-|missing check|||
+|missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
