@@ -38,3 +38,5 @@ SELECT * FROM test WHERE NOT colE BETWEEN 3 AND 15
 SELECT * FROM test WHERE colE BETWEEN 3 AND 15
 SELECT * FROM test WHERE NOT colE BETWEEN 3 AND 15 AND colD < 9 OR NOT colB != 'aa'
 SELECT * FROM test WHERE colB IN ('aa', 'ab', 'bb')
+SELECT * FROM test WHERE colB NOT IN ('ab', 'bb')
+SELECT * FROM test WHERE colB NOT IN ('ab', 'bb') AND NOT (colE > 8 OR NOT colD <> 10)

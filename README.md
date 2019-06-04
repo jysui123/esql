@@ -34,16 +34,6 @@
 - [ ] test cases for unsupported and invalid queries
 
 
-## Installing and Testing
-- download elasticsearch v6.5 (optional: kibana v6.5) and unzip
-- run `chmod u+x start_service.sh test_all.sh`
-- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server
-- optional: modify `sqls.txt` to add custom SQL queries as test cases
-- optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
-- run `./test_all.sh` to run all the test cases
-- generated dsls are stored in `dsls.txt` and `dslsPretty.txt`
-
-
 ## Motivation
 Currently we are using [elasticsql](https://github.com/cch123/elasticsql). However it only support up to ES V2.x while [Cadence](https://github.com/uber/cadence) is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
 
@@ -58,7 +48,7 @@ Current Cadence query request processing steps are listed below:
 - modify sorting field
 - setup search after for pagination
 
-This project aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
+This project is based on [elasticsql](https://github.com/cch123/elasticsql) and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
 
 
 ## Testing Module
@@ -69,7 +59,17 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
-- `LIKE` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard % and _)
+- `LIKE` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+
+Testing steps:
+- download elasticsearch v6.5 (optional: kibana v6.5) and unzip
+- run `chmod u+x start_service.sh test_all.sh`
+- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server
+- optional: modify `sqls.txt` to add custom SQL queries as test cases
+- optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
+- run `./test_all.sh` to run all the test cases
+- generated dsls are stored in `dsls.txt` and `dslsPretty.txt` for reference
+
 
 ## esql vs elasticsql
 |Item|esql|elasticsql|
