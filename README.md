@@ -19,7 +19,15 @@
 
 ### M3
 - [ ] aggregations
+    - [ ] COUNT
+    - [ ] AVG
+    - [ ] MIN, MAX
+    - [ ] DISTINCT
+    - [ ] ES aggregation functions
 - [ ] keyword: GROUP BY
+    - [ ] GROUP BY column name
+    - [ ] GROUP BY ES aggregation functions
+- [ ] resolve conflict between aggregations and GROUP BY
 - [ ] keyword: ORDER BY
 - [ ] select specific columns
 
@@ -81,7 +89,13 @@ Testing steps:
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 
+
 ## ES V2.x vs ES V6.5
 |Item|ES V2.x|ES v6.5|
 |:-:|:-:|:-:|
 |missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
+
+
+## Attentions
+- `must_not` in ES does not share the same logic as `NOT` in sql
+- if you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
