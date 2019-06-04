@@ -13,7 +13,6 @@
 
 # Testing intermediate files
 *.txt
-dummy
 .vscode
 .DS_Store
 
