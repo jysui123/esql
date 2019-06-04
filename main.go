@@ -35,7 +35,7 @@ func (e *ESql) Convert(sql string) (dsl string, err error) {
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, err = e.convertSelect(stmt.(*sqlparser.Select))
+		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)))
 	default:
 		err = errors.New("esql: Queries other than select not supported")
 	}
