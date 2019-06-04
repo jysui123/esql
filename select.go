@@ -1,7 +1,6 @@
 package esql
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -34,16 +33,16 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	// check whether user passes only 1 from clause
 	if len(sel.From) != 1 {
 		if len(sel.From) == 0 {
-			err = errors.New("esql: invalid from expressino: no from expression specified")
+			err = fmt.Errorf("esql: invalid from expressino: no from expression specified")
 		} else {
-			err = errors.New("esql: join not supported")
+			err = fmt.Errorf("esql: join not supported")
 		}
 		return "", err
 	}
 
 	// check whther user passes groupby clause
 	if len(sel.GroupBy) != 0 {
-		err = errors.New("esql: group by not supported")
+		err = fmt.Errorf("esql: group by not supported")
 		return "", err
 	}
 
@@ -57,7 +56,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 
 	// check whether user passes in order by clause
 	if len(sel.OrderBy) != 0 {
-		err = errors.New("esql: order by not supported")
+		err = fmt.Errorf("esql: order by not supported")
 		return "", err
 	}
 
@@ -76,7 +75,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
 	var err error
 	if expr == nil {
-		err = errors.New("esql: invalid where expression, where expression should not be nil")
+		err = fmt.Errorf("esql: invalid where expression, where expression should not be nil")
 	}
 
 	switch expr.(type) {
@@ -95,7 +94,7 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 		rangeCond := expr.(*sqlparser.RangeCond)
 		lhs, ok := rangeCond.Left.(*sqlparser.ColName)
 		if !ok {
-			return "", errors.New("esql: invalid range column name")
+			return "", fmt.Errorf("esql: invalid range column name")
 		}
 		lhsStr := sqlparser.String(lhs)
 		fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
@@ -209,7 +208,7 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 	isExpr := expr.(*sqlparser.IsExpr)
 	colName, ok := isExpr.Expr.(*sqlparser.ColName)
 	if !ok {
-		return "", errors.New("esql: is expression only support colname missing check")
+		return "", fmt.Errorf("esql: is expression only support colname missing check")
 	}
 	lhsStr := sqlparser.String(colName)
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
@@ -222,7 +221,7 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 		case sqlparser.IsNotNullStr:
 			op = sqlparser.IsNullStr
 		default:
-			return "", errors.New("esql: is expression only support is null and is not null")
+			return "", fmt.Errorf("esql: is expression only support is null and is not null")
 		}
 	}
 	switch op {
@@ -231,7 +230,7 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 	case sqlparser.IsNotNullStr:
 		dsl = fmt.Sprintf(`{"exists": {"field": "%v"}}`, lhsStr)
 	default:
-		return "", errors.New("esql: is expression only support is null and is not null")
+		return "", fmt.Errorf("esql: is expression only support is null and is not null")
 	}
 	return dsl, nil
 }
@@ -241,7 +240,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
 	colName, ok := comparisonExpr.Left.(*sqlparser.ColName)
 	if !ok {
-		return "", errors.New("esql: invalid comparison expression, lhs must be a column name")
+		return "", fmt.Errorf("esql: invalid comparison expression, lhs must be a column name")
 	}
 
 	lhsStr := sqlparser.String(colName)
