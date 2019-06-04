@@ -1,0 +1,66 @@
+
+//var cmdHead = `curl -GET "http://localhost:9200/` + tableName + `/_search" -H "Content-Type: application/json" -d `
+//var outStream = ` | python -m json.tool >> query_results.json`
+//var sepString = `echo $'\n\n{"*******"}\n\n' >> query_results.json`
+
+// TestSupported ...
+// test supported features and write the converted json query to a file
+// func TestSupported(t *testing.T) {
+// 	fmt.Println("TestSupported ...")
+// 	outputFileName := "queries.sh"
+// 	f, err := os.Create(outputFileName)
+// 	if err != nil {
+// 		t.Error("fail to create output file!")
+// 	}
+// 	f.WriteString("#!/bin/bash\necho > query_results.json\n\n")
+// 	for k, v := range validQueries {
+// 		var dslMap map[string]interface{}
+// 		err := json.Unmarshal([]byte(v), &dslMap)
+// 		if err != nil {
+// 			println(v)
+// 			t.Error("test case json unmarshal err!")
+// 		}
+
+// 		// test convert
+// 		dsl, err := Convert(k)
+// 		var dslConvertedMap map[string]interface{}
+// 		err = json.Unmarshal([]byte(dsl), &dslConvertedMap)
+
+// 		if err != nil {
+// 			t.Error("the generated dsl json unmarshal error!", k)
+// 		}
+
+// 		// check whether the converted query matches expected,
+// 		// if yes, write it to a file for further testing
+// 		converted, _ := json.MarshalIndent(dslConvertedMap, "", "  ")
+// 		expected, _ := json.MarshalIndent(dslMap, "", "  ")
+// 		if !reflect.DeepEqual(dslMap, dslConvertedMap) {
+// 			t.Error("the generated dsl: \n\t", string(converted),
+// 				"\nis not equal to expected: \n\t", string(expected), "\n")
+// 		} else {
+// 			f.WriteString(sepString)
+// 			f.WriteString("\n\n")
+// 			f.WriteString(cmdHead)
+// 			f.WriteString("'")
+// 			f.Write(converted)
+// 			f.WriteString("'")
+// 			f.WriteString(outStream)
+// 			f.WriteString("\n\n")
+// 		}
+
+// 		// test convert pretty
+// 		// dsl, err = ConvertPretty(k)
+// 		// var dslConvertedPretty map[string]interface{}
+// 		// err = json.Unmarshal([]byte(dsl), &dslConvertedPretty)
+
+// 		// if err != nil {
+// 		// 	t.Error("the generated dsl json unmarshal error!", k)
+// 		// }
+
+// 		// if !reflect.DeepEqual(dslMap, dslConvertedPretty) {
+// 		// 	t.Error("the generated dsl is not equal to expected", k)
+// 		// }
+
+// 	}
+// 	f.Sync()
+// }
