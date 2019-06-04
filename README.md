@@ -15,12 +15,13 @@
 - [x] keyword: IS NULL, IS NOT NULL (missing check)
 - [x] keyword: BETWEEN
 - [x] keyword: IN, NOT IN
-- [ ] keyword: LIKE, NOT LIKE
+- [x] keyword: LIKE, NOT LIKE
 
 ### M3
-- [ ] select specific columns
-- [ ] keyword: ORDER BY
+- [ ] aggregations
 - [ ] keyword: GROUP BY
+- [ ] keyword: ORDER BY
+- [ ] select specific columns
 
 ### M4
 - [ ] special handling: ExecutionTime field

@@ -5,11 +5,9 @@ kibana=~/Desktop/elasticsearch/kibana-6.5.0-darwin-x86_64/
 
 if [ $# -eq 1 ]; then
     elastic=$1
-fi
-if [ $# -eq 2 ]; then
+elif [ $# -eq 2 ]; then
     kibana=$2
-fi
-if [ $# -gt 2 ]; then
+elif [ $# -gt 2 ]; then
     echo "Usage: start_service.sh <elasticsearch_path> <kibana_path>"
     exit 1
 fi

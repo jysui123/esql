@@ -225,7 +225,6 @@ func (e *ESql) convertIsExpr(expr *sqlparser.Expr, parent *sqlparser.Expr, not b
 	lhsStr := sqlparser.String(colName)
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 	dsl := ""
-	// TODO: possible optimization: flatten chained is expressions
 	op := isExpr.Operator
 	if not {
 		switch isExpr.Operator {
