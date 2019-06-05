@@ -41,9 +41,14 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	}
 
 	// check whther user passes groupby clause
+	// TODO: raise error when SELECT colName and GROUP BY colName does not match
+	// TODO: avoid returning all documents if unnecessary
 	if len(sel.GroupBy) != 0 {
-		err = fmt.Errorf("esql: group by not supported")
-		return "", err
+		dslGroupBy, err := e.convertGroupByExpr(sel.GroupBy)
+		if err != nil {
+			return "", err
+		}
+		dslMap["aggs"] = dslGroupBy
 	}
 
 	// check whether user passes in limit clause

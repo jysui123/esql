@@ -10,9 +10,11 @@ indexingRoute = '/_mapping/_doc'
 postDataRoute = '/_doc'
 
 headers = {"Content-type": "application/json"}
+# type keyword is often used for aggregation and sorting. It can only searched by its exact value
+# type text is often used for text analysis, e.g. search a word in the field
 schema = {
     "properties": {
-        "colA": {"type": "text"},
+        "colA": {"type": "keyword"},
         "colB": {"type": "keyword"},
         "colC": {"type": "text"},
         "colD": {"type": "long"},

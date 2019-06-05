@@ -31,25 +31,47 @@ class TestGeneratedDSL(unittest.TestCase):
             # convert responses to json
             officialRes = officialRes.json() if officialRes and officialRes.status_code == 200 else None
             res = res.json() if res and res.status_code == 200 else None
-            self.assertNotEqual(officialRes, None, 'dsl query {} failed'.format(i+1))
-            self.assertNotEqual(res, None, 'dsl query {} failed'.format(i+1))
-            self.assertEqual(officialRes['hits']['total'], res['hits']['total'], 'number of hits in query {} not match\n\tget {}, expected {}'.format(i + 1, res['hits']['total'], officialRes['hits']['total']))
-            self.assertEqual(len(officialRes['hits']['hits']), len(res['hits']['hits']), 'number of result in query {} not match\n\tget {}, expected {}'.format(i+1, res['hits']['total'], officialRes['hits']['total']))
-            # check all the row id matches
-            officialIds = []
-            ids = []
-            for v in officialRes['hits']['hits']:
-                officialIds.append(v['_id'])
-                # officialIds.append(officialRes['hits']['hits'][j]['_id'])
-            for v in res['hits']['hits']:
-                ids.append(v['_id'])
-            officialIds = sorted(officialIds)
-            ids = sorted(ids)
-            # print(officialIds, '\n')
-            # print(ids, '\n')
-            for j in range(len(ids)):
-                self.assertEqual(ids[j], officialIds[j], 'document id of query {} not match'.format(i + 1))
-            print('query {} returns {} documents, pass'.format(i+1, len(ids)))
+            self.assertNotEqual(officialRes, None, 'official dsl query {} failed'.format(i+1))
+            self.assertNotEqual(res, None, 'dsl query {} failed'.format(i + 1))
+
+            if 'aggs' in dsls[i]:
+                self.check_equal_agg(res, officialRes, i)
+            else:
+                self.check_equal(res, officialRes, i)
+
+    def check_equal(self, res, officialRes, i):
+        self.assertEqual(officialRes['hits']['total'], res['hits']['total'], 'number of hits in query {} not match\n\tget {}, expected {}'.format(i + 1, res['hits']['total'], officialRes['hits']['total']))
+        self.assertEqual(len(officialRes['hits']['hits']), len(res['hits']['hits']), 'number of result in query {} not match\n\tget {}, expected {}'.format(i+1, res['hits']['total'], officialRes['hits']['total']))
+        # check all the row id matches
+        officialIds = []
+        ids = []
+        for v in officialRes['hits']['hits']:
+            officialIds.append(v['_id'])
+            # officialIds.append(officialRes['hits']['hits'][j]['_id'])
+        for v in res['hits']['hits']:
+            ids.append(v['_id'])
+        officialIds = sorted(officialIds)
+        ids = sorted(ids)
+        # print(officialIds, '\n')
+        # print(ids, '\n')
+        for j in range(len(ids)):
+            self.assertEqual(ids[j], officialIds[j], 'document id of query {} not match'.format(i + 1))
+        print ('query {} returns {} documents, pass'.format(i + 1, len(ids)))
+
+    def check_equal_agg(self, res, officialRes, i):
+        # check all group number matches
+        officialCounts = []
+        counts = []
+        for v in officialRes['aggregations']['groupby']['buckets']:
+            officialCounts.append(v['doc_count'])
+        for v in res['aggregations']['groupby']['buckets']:
+            counts.append(v['doc_count'])
+        self.assertEqual(len(counts), len(officialCounts), 'number of groups in query {} not match\n\tget {}, expected {}'.format(i+1, len(counts), len(officialCounts)))
+        officialCounts = sorted(officialCounts)
+        counts = sorted(counts)
+        for j in range(len(counts)):
+            self.assertEqual(counts[j], officialCounts[j], 'document id of query {} not match'.format(i + 1))
+        print ('query {} returns {} groups, pass'.format(i + 1, len(counts)))
 
 
 if __name__ == '__main__':
