@@ -40,16 +40,17 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 
-	// check whther user passes groupby clause
+	// check whther user passes aggregations
 	// TODO: raise error when SELECT colName and GROUP BY colName does not match
-	// TODO: avoid returning all documents if unnecessary
-	if len(sel.GroupBy) != 0 {
-		dslGroupBy, err := e.convertGroupByExpr(sel.GroupBy)
-		if err != nil {
-			return "", err
-		}
-		dslMap["aggs"] = dslGroupBy
+	// TODO: optimization: avoid returning all documents if unnecessary
+	dslAgg, err := e.convertAgg(sel)
+	if err != nil {
+		return "", err
 	}
+	if dslAgg != "" {
+		dslMap["aggs"] = dslAgg
+	}
+	// fmt.Printf("dslAgg: " + dslAgg + "\n")
 
 	// check whether user passes in limit clause
 	if sel.Limit != nil {

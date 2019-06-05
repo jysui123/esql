@@ -41,4 +41,14 @@ SELECT * FROM test WHERE colB IN ('aa', 'ab', 'bb')
 SELECT * FROM test WHERE colB NOT IN ('ab', 'bb')
 SELECT * FROM test WHERE colB NOT IN ('ab', 'bb') AND NOT (colE > 8 OR NOT colD <> 10)
 SELECT colB FROM test GROUP BY colB
+SELECT colB, colA FROM test GROUP BY colB, colB, colA, colA
+SELECT colB FROM test WHERE colE > 6 and date IS NOT NULL GROUP BY colB
 SELECT colB, colA FROM test GROUP BY colB, colA
+SELECT COUNT(DISTINCT colB) FROM test
+SELECT COUNT(DISTINCT colB), AVG(colE) FROM test
+SELECT COUNT(*) FROM test
+SELECT COUNT(colB) FROM test
+SELECT AVG(colE) FROM test GROUP BY colB
+SELECT AVG(colE), COUNT(*) FROM test GROUP BY colB, colA
+SELECT AVG(colE), COUNT(colA) FROM test GROUP BY colB, colA
+SELECT MAX(colD), AVG(colE), COUNT(colA) FROM test GROUP BY colB, colA
