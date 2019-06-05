@@ -40,19 +40,31 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 
+	// check whether user specify target columns
+	_, selectedColNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	if err != nil {
+		return "", err
+	}
+	if len(selectedColNameSlice) > 0 {
+		colNames := strings.Join(selectedColNameSlice, ",")
+		dslMap["_source"] = fmt.Sprintf(`{"includes": [%v]}`, colNames)
+	}
+
 	// check whther user passes aggregations
-	// TODO: raise error when SELECT colName and GROUP BY colName does not match
-	// TODO: optimization: avoid returning all documents if unnecessary
 	dslAgg, err := e.convertAgg(sel)
 	if err != nil {
 		return "", err
 	}
 	if dslAgg != "" {
 		dslMap["aggs"] = dslAgg
+		// do not return document contents if this is an aggregation query
+		dslMap["_source"] = "false"
+		dslMap["stored_fields"] = `"_none_"`
 	}
-	// fmt.Printf("dslAgg: " + dslAgg + "\n")
 
 	// check whether user passes in limit clause
+	// TODO: pagination
+	dslMap["size"] = 1000
 	if sel.Limit != nil {
 		if sel.Limit.Offset != nil {
 			dslMap["from"] = sqlparser.String(sel.Limit.Offset)
@@ -66,7 +78,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 
-	var dslKeySlice = []string{"query", "from", "size", "sort", "aggs"}
+	var dslKeySlice = []string{"size", "_source", "stored_fields", "query", "from", "sort", "aggs", "search_after"}
 	var dslQuerySlice []string
 	for _, k := range dslKeySlice {
 		if v, exist := dslMap[k]; exist {

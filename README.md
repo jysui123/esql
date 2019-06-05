@@ -19,17 +19,17 @@
 
 ### M3
 - [ ] aggregations
-    - [ ] COUNT
-    - [ ] AVG
-    - [ ] MIN, MAX
-    - [ ] DISTINCT
+    - [x] COUNT
+    - [x] AVG
+    - [x] MIN, MAX
+    - [x] DISTINCT
     - [ ] ES aggregation functions
 - [ ] keyword: GROUP BY
-    - [ ] GROUP BY column name
-    - [ ] GROUP BY ES aggregation functions
+    - [x] GROUP BY column name
+    - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
 - [ ] resolve conflict between aggregations and GROUP BY
 - [ ] keyword: ORDER BY
-- [ ] select specific columns
+- [x] select specific columns
 
 ### M4
 - [ ] special handling: ExecutionTime field
@@ -87,6 +87,7 @@ Testing steps:
 |missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
 |NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
+|group by multiple columns|nested "aggs" field|"composite" flattened grouping|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 
 
@@ -94,8 +95,10 @@ Testing steps:
 |Item|ES V2.x|ES v6.5|
 |:-:|:-:|:-:|
 |missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
+|group by multiple columns|nested "aggs" field|"composite" flattened grouping|
 
 
 ## Attentions
 - `must_not` in ES does not share the same logic as `NOT` in sql
 - if you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
+- COUNT(colName) will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
