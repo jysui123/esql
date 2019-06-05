@@ -78,7 +78,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 
-	var dslKeySlice = []string{"size", "_source", "stored_fields", "query", "from", "sort", "aggs", "search_after"}
+	var dslKeySlice = []string{"size", "_source", "stored_fields", "query", "from",
+		"aggs", "search_after", "docvalue_fields", "sort"}
 	var dslQuerySlice []string
 	for _, k := range dslKeySlice {
 		if v, exist := dslMap[k]; exist {

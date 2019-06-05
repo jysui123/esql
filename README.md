@@ -22,7 +22,7 @@
     - [x] COUNT
     - [x] AVG
     - [x] MIN, MAX
-    - [x] DISTINCT
+    - [x] DISTINCT COUNT
     - [ ] ES aggregation functions
 - [ ] keyword: GROUP BY
     - [x] GROUP BY column name
@@ -32,10 +32,12 @@
 - [x] select specific columns
 
 ### M4
+- [ ] keyword: HAVING
 - [ ] special handling: ExecutionTime field
 - [ ] key whitelist filtering
 - [ ] column name filtering
 - [ ] pagination, search after
+- [ ] select regex column names
 
 ### Misc
 - [ ] optimization: docvalue_fields, term&keyword
@@ -89,6 +91,8 @@ Testing steps:
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
 |group by multiple columns|nested "aggs" field|"composite" flattened grouping|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
+|optimization|return all document contents|does not return document contents in aggregation query|
+|optimization|return all fields no matter what user specifies|only return fields user specifies after SELECT|
 
 
 ## ES V2.x vs ES V6.5
@@ -101,4 +105,5 @@ Testing steps:
 ## Attentions
 - `must_not` in ES does not share the same logic as `NOT` in sql
 - if you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
-- COUNT(colName) will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
+- `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
+- ES SQL API does not support `SELECT DISTINCT`, but we can achieve the same result by `COUNT(DISTINCT colName)`

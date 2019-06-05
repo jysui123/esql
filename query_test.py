@@ -4,8 +4,8 @@ import unittest
 
 class TestGeneratedDSL(unittest.TestCase):
     urlSQL = 'http://localhost:9200/_xpack/sql/translate'
-    urlDefault = 'http://localhost:9200/test/_search'
-    urlFull = 'http://localhost:9200/test/_search?size=200'
+    url = 'http://localhost:9200/test/_search'
+    # urlFull = 'http://localhost:9200/test/_search?size=200'
     headers = {"Content-type": "application/json"}
     sqlFileName = 'sqls.txt'
     dslFileName = 'dsls.txt'
@@ -23,7 +23,7 @@ class TestGeneratedDSL(unittest.TestCase):
         for i in range(len(sqls)):
             # * LIMIT is not tested since the order is not specified
             # url = self.urlDefault if 'LIMIT' in sqls[i] or 'limit' in sqls[i] else self.urlFull
-            url = self.urlFull
+            url = self.url
             sqlQueryPayload = {"query": sqls[i]}
             officialDsl = requests.get(self.urlSQL, data=json.dumps(sqlQueryPayload), headers=self.headers)
             officialRes = requests.get(url, data=officialDsl, headers=self.headers)

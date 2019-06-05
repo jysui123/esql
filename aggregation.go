@@ -68,15 +68,16 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err 
 		}
 		switch funcNameStr {
 		case "count":
+			// no need to handle since the size of bucket is always returned
+			if funcArguStr == "*" {
+				continue
+			}
 			if _, exist := aggMap[funcArguStr][funcNameStr]; exist {
 				continue
 			}
 			aggMap[funcArguStr][funcNameStr] = 1
 			var aggStr string
-			if funcArguStr == "*" {
-				// no need to handle since the size of bucket is always returned
-				continue
-			} else if funcExpr.Distinct {
+			if funcExpr.Distinct {
 				aggStr = fmt.Sprintf(`"%v": {"cardinality": {"field": "%v"}}`, funcAggTag, funcArguStr)
 			} else {
 				// * ES SQL translate API just ignore non DISTINCT COUNT since the count of a bucket is always
