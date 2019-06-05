@@ -91,8 +91,8 @@ Testing steps:
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
 |group by multiple columns|nested "aggs" field|"composite" flattened grouping|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
-|optimization|return all document contents|does not return document contents in aggregation query|
-|optimization|return all fields no matter what user specifies|only return fields user specifies after SELECT|
+|optimization|does not return document contents in aggregation query|return all document contents|
+|optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|
 
 
 ## ES V2.x vs ES V6.5
