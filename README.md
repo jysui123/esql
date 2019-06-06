@@ -29,6 +29,8 @@
     - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
 - [ ] resolve conflict between aggregations and GROUP BY
 - [ ] keyword: ORDER BY
+    - [ ] ORDER BY column name
+    - [ ] ORDER BY aggregation function
 - [x] select specific columns
 
 ### M4
@@ -38,6 +40,7 @@
 - [ ] column name filtering
 - [ ] pagination, search after
 - [ ] select regex column names
+- [ ] workflow ID as sorting tie breaker
 
 ### Misc
 - [ ] optimization: docvalue_fields, term&keyword

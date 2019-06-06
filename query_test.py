@@ -51,11 +51,15 @@ class TestGeneratedDSL(unittest.TestCase):
         # check all the row id matches
         officialIds = []
         ids = []
-        for v in officialRes['hits']['hits']:
-            officialIds.append(v['_id'])
-            # officialIds.append(officialRes['hits']['hits'][j]['_id'])
         for v in res['hits']['hits']:
             ids.append(v['_id'])
+        for v in officialRes['hits']['hits']:
+            # if select certain columns, ES SQL won't return document _id
+            if '_id' not in v:
+                print ('query {} returns {} documents, pass'.format(i + 1, len(ids)))
+                return
+            officialIds.append(v['_id'])
+            # officialIds.append(officialRes['hits']['hits'][j]['_id'])
         officialIds = sorted(officialIds)
         ids = sorted(ids)
         # print(officialIds, '\n')

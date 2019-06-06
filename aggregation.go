@@ -47,6 +47,9 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 }
 
 func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[string]int) (err error) {
+	if len(colNameGroupBy) == 0 {
+		return nil
+	}
 	for _, colNameStr := range colNameSlice {
 		if _, exist := colNameGroupBy[colNameStr]; !exist {
 			err = fmt.Errorf(`esql: select column %v that not in group by`, colNameStr)
@@ -62,7 +65,8 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err 
 	for _, funcExpr := range exprs {
 		funcNameStr := strings.ToLower(funcExpr.Name.String())
 		funcArguStr := sqlparser.String(funcExpr.Exprs)
-		funcAggTag := funcNameStr + "(" + funcArguStr + ")"
+		funcArguStr = strings.Trim(funcArguStr, "`")
+		funcAggTag := funcNameStr + "_" + funcArguStr
 		if _, exist := aggMap[funcArguStr]; !exist {
 			aggMap[funcArguStr] = make(map[string]int)
 		}
@@ -86,12 +90,12 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err 
 				aggStr = fmt.Sprintf(`"%v": {"value_count": {"field": "%v"}}`, funcAggTag, funcArguStr)
 			}
 			aggSlice = append(aggSlice, aggStr)
-		case "avg", "max", "min", "sum", "stat":
+		case "avg", "max", "min", "sum", "stats":
 			if _, exist := aggMap[funcArguStr][funcNameStr]; exist {
 				continue
 			}
 			aggMap[funcArguStr][funcNameStr] = 1
-			// TODO: optimization: group multiple aggregation on the same colName as stat
+			// TODO: optimization: group multiple aggregation on the same colName as stats
 			aggStr := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, funcAggTag, funcNameStr, funcArguStr)
 			aggSlice = append(aggSlice, aggStr)
 		default:
@@ -120,7 +124,7 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				aggFuncExprSlice = append(aggFuncExprSlice, funcExpr)
 			case *sqlparser.ColName:
 				colName := aliasedExpr.Expr.(*sqlparser.ColName)
-				colNameSlice = append(colNameSlice, sqlparser.String(colName))
+				colNameSlice = append(colNameSlice, strings.Trim(sqlparser.String(colName), "`"))
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
 				return nil, nil, err

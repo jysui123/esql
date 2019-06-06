@@ -30,6 +30,16 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["query"] = dslQuery
 	}
 
+	// check whether user passes in limit clause
+	// TODO: pagination
+	dslMap["size"] = 1000
+	if sel.Limit != nil {
+		if sel.Limit.Offset != nil {
+			dslMap["from"] = sqlparser.String(sel.Limit.Offset)
+		}
+		dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
+	}
+
 	// check whether user passes only 1 from clause
 	if len(sel.From) != 1 {
 		if len(sel.From) == 0 {
@@ -46,7 +56,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 	if len(selectedColNameSlice) > 0 {
-		colNames := strings.Join(selectedColNameSlice, ",")
+		colNames := `"` + strings.Join(selectedColNameSlice, `", "`) + `"`
 		dslMap["_source"] = fmt.Sprintf(`{"includes": [%v]}`, colNames)
 	}
 
@@ -60,22 +70,21 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		// do not return document contents if this is an aggregation query
 		dslMap["_source"] = "false"
 		dslMap["stored_fields"] = `"_none_"`
+		dslMap["size"] = 0
 	}
 
-	// check whether user passes in limit clause
-	// TODO: pagination
-	dslMap["size"] = 1000
-	if sel.Limit != nil {
-		if sel.Limit.Offset != nil {
-			dslMap["from"] = sqlparser.String(sel.Limit.Offset)
+	// check whether user specify order rules
+	// if it is an aggregate query, no point to order
+	if _, exist := dslMap["aggs"]; !exist {
+		var orderBySlice []string
+		for _, orderExpr := range sel.OrderBy {
+			orderFieldStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
+			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
+			orderBySlice = append(orderBySlice, orderByStr)
 		}
-		dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
-	}
-
-	// check whether user passes in order by clause
-	if len(sel.OrderBy) != 0 {
-		err = fmt.Errorf("esql: order by not supported")
-		return "", err
+		if len(orderBySlice) > 0 {
+			dslMap["sort"] = fmt.Sprintf("[%v]", strings.Join(orderBySlice, ","))
+		}
 	}
 
 	var dslKeySlice = []string{"size", "_source", "stored_fields", "query", "from",
