@@ -65,6 +65,8 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 
 func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser.OrderBy) (dsl string, err error) {
 	var aggSlice, orderAggsSlice, orderAggsDirSlice []string
+
+	// handle order by aggregation functions
 	orderTagSet := make(map[string]int)
 	for _, orderExpr := range orderBy {
 		orderTargetStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
@@ -77,6 +79,10 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser
 			orderAggStr := strings.ToLower(strParts[0]) + "_" + strParts[1]
 			// convert count_distinct colName to count_distinct_colName, to match the aggregation tag
 			orderAggStr = strings.Replace(orderAggStr, " ", "_", -1)
+			if strParts[0] != "count" && strings.Contains(orderAggStr, "distinct") {
+				err = fmt.Errorf(`esql: order by aggregation function %v w/ DISTINCT not supported`, orderAggStr)
+				return "", err
+			}
 			if strParts[0] == "count" && !strings.Contains(orderAggStr, "distinct") {
 				orderAggStr = "_count"
 			}
