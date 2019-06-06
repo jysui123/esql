@@ -51,7 +51,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	}
 
 	// check whether user specify target columns
-	_, selectedColNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	_, selectedColNameSlice, _, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", err
 	}
@@ -79,6 +79,10 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {
 			orderFieldStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
+			// only count colNames not aggregation functions
+			if strings.ContainsAny(orderFieldStr, "()") {
+				continue
+			}
 			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
 		}

@@ -41,7 +41,7 @@ class TestGeneratedDSL(unittest.TestCase):
                     self.check_equal_analysis(res, officialRes, i)
             else:
                 if 'COUNT(*)' in sqls[i]:
-                    print ('query {} not yet tested'.format(i + 1))
+                    print ('query {} not yet supported'.format(i + 1))
                 else:
                     self.check_equal(res, officialRes, i)
 
@@ -72,19 +72,22 @@ class TestGeneratedDSL(unittest.TestCase):
         # check all group number matches
         officialCounts = []
         counts = []
+        if 'aggregations' not in officialRes:
+            print ('query {} not yet supported'.format(i + 1))
+            return
         for v in officialRes['aggregations']['groupby']['buckets']:
             officialCounts.append(v['doc_count'])
         for v in res['aggregations']['groupby']['buckets']:
             counts.append(v['doc_count'])
         self.assertEqual(len(counts), len(officialCounts), 'number of groups in query {} not match\n\tget {}, expected {}'.format(i+1, len(counts), len(officialCounts)))
-        officialCounts = sorted(officialCounts)
-        counts = sorted(counts)
+        # officialCounts = sorted(officialCounts)
+        # counts = sorted(counts)
         for j in range(len(counts)):
             self.assertEqual(counts[j], officialCounts[j], 'document id of query {} not match'.format(i + 1))
         print ('query {} returns {} groups, pass'.format(i + 1, len(counts)))
 
     def check_equal_analysis(self, res, officialRes, i):
-        print ('query {} not yet tested'.format(i + 1))
+        print ('query {} not yet supported'.format(i + 1))
 
 
 if __name__ == '__main__':

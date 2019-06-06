@@ -18,19 +18,16 @@
 - [x] keyword: LIKE, NOT LIKE
 
 ### M3
-- [ ] aggregations
+- [x] aggregations
     - [x] COUNT
-    - [x] AVG
+    - [x] AVG, SUM
     - [x] MIN, MAX
-    - [x] DISTINCT COUNT
-    - [ ] ES aggregation functions
-- [ ] keyword: GROUP BY
-    - [x] GROUP BY column name
-    - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
-- [ ] resolve conflict between aggregations and GROUP BY
-- [ ] keyword: ORDER BY
-    - [ ] ORDER BY column name
-    - [ ] ORDER BY aggregation function
+    - [x] COUNT DISTINCT
+- [x] keyword: GROUP BY (column name)
+- [x] resolve conflict between aggregations and GROUP BY
+- [x] keyword: ORDER BY
+    - [x] ORDER BY column name
+    - [x] ORDER BY aggregation function
 - [x] select specific columns
 
 ### M4
@@ -41,11 +38,19 @@
 - [ ] pagination, search after
 - [ ] select regex column names
 - [ ] workflow ID as sorting tie breaker
+- [ ] domain ID search
+
+### M5
+- [ ] TBD
 
 ### Misc
 - [ ] optimization: docvalue_fields, term&keyword
 - [ ] documentation
 - [ ] test cases for unsupported and invalid queries
+- [ ] ES functions (not in sql standard)
+    - [ ] ES aggregation functions
+    - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
+- [ ] ES pipeline aggregations
 
 
 ## Motivation
@@ -59,7 +64,7 @@ Current Cadence query request processing steps are listed below:
 - add domain query
 - key whitelist filtering
 - delete some useless field like "from", "size"
-- modify sorting field
+- modify sorting field (add workflow id as sorting tie breaker)
 - setup search after for pagination
 
 **This project is based on [elasticsql](https://github.com/cch123/elasticsql)** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
@@ -92,7 +97,8 @@ Testing steps:
 |missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
 |NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
-|group by multiple columns|nested "aggs" field|"composite" flattened grouping|
+|group by multiple columns|"composite" flattened grouping|nested "aggs" field|
+|order by aggregation function|use "bucket_sort" to order by aggregation functions, also do validation check|not supported|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|return all document contents|
 |optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|
@@ -110,3 +116,4 @@ Testing steps:
 - if you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
 - `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
 - ES SQL API does not support `SELECT DISTINCT`, but we can achieve the same result by `COUNT(DISTINCT colName)`
+- ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort

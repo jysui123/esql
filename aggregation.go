@@ -9,22 +9,23 @@ import (
 
 func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	var dslGroupBy, dslAggFunc string
-	var colNameSetGroupBy map[string]int
+	colNameSetGroupBy := make(map[string]int)
 	if len(sel.GroupBy) != 0 {
 		dslGroupBy, colNameSetGroupBy, err = e.convertGroupByExpr(sel.GroupBy)
 		if err != nil {
 			return "", err
 		}
 	}
-	aggFuncExprSlice, colNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	aggFuncExprSlice, colNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", err
 	}
-	if err = e.checkAggCompatibility(colNameSlice, colNameSetGroupBy); err != nil {
+	// verify don't select col name out side agg group name
+	if err = e.checkAggCompatibility(colNameSlice, colNameSetGroupBy, aggNameSlice); err != nil {
 		return "", err
 	}
 	if len(aggFuncExprSlice) != 0 {
-		dslAggFunc, err = e.convertAggFuncExpr(aggFuncExprSlice)
+		dslAggFunc, err = e.convertAggFuncExpr(aggFuncExprSlice, sel.OrderBy)
 		if err != nil {
 			return "", err
 		}
@@ -46,7 +47,10 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	return dsl, nil
 }
 
-func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[string]int) (err error) {
+func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[string]int, aggNameSlice []string) (err error) {
+	for _, aggName := range aggNameSlice {
+		colNameGroupBy[aggName] = 1
+	}
 	if len(colNameGroupBy) == 0 {
 		return nil
 	}
@@ -59,27 +63,65 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 	return nil
 }
 
-func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err error) {
-	var aggSlice []string
-	aggMap := make(map[string]map[string]int) // colName -> AggFunc -> appear time
+func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser.OrderBy) (dsl string, err error) {
+	var aggSlice, orderAggsSlice, orderAggsDirSlice []string
+	orderTagSet := make(map[string]int)
+	for _, orderExpr := range orderBy {
+		orderTargetStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
+		if strings.ContainsAny(orderTargetStr, "()") {
+			// TODO: do more sanity checks, like prevent order the same target with different directions
+			// eg: COUNT(colA) -> count_colA
+			orderTargetStr = strings.Trim(orderTargetStr, ")")
+			strParts := strings.Split(orderTargetStr, "(")
+			strParts[0] = strings.ToLower(strParts[0])
+			orderAggStr := strings.ToLower(strParts[0]) + "_" + strParts[1]
+			// convert count_distinct colName to count_distinct_colName, to match the aggregation tag
+			orderAggStr = strings.Replace(orderAggStr, " ", "_", -1)
+			if strParts[0] == "count" && !strings.Contains(orderAggStr, "distinct") {
+				orderAggStr = "_count"
+			}
+			// avoid duplicate
+			if _, exist := orderTagSet[orderAggStr]; !exist {
+				orderTagSet[orderAggStr] = 1
+				orderAggsSlice = append(orderAggsSlice, orderAggStr)
+				orderAggsDirSlice = append(orderAggsDirSlice, orderExpr.Direction)
+			}
+		}
+	}
+	if len(orderTagSet) > 0 {
+		var bucketSortSlice []string
+		for i := 0; i < len(orderAggsSlice); i++ {
+			bucketSortStr := fmt.Sprintf(`{"%v": {"order": "%v"}}`, orderAggsSlice[i], orderAggsDirSlice[i])
+			bucketSortSlice = append(bucketSortSlice, bucketSortStr)
+		}
+		aggSortStr := strings.Join(bucketSortSlice, ",")
+		// TODO: magic size number
+		aggSortStr = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, aggSortStr, 1000)
+		aggSlice = append(aggSlice, aggSortStr)
+	}
+
+	aggTagSet := make(map[string]int) // used for detect conflict between agg and order by
 	for _, funcExpr := range exprs {
 		funcNameStr := strings.ToLower(funcExpr.Name.String())
 		funcArguStr := sqlparser.String(funcExpr.Exprs)
 		funcArguStr = strings.Trim(funcArguStr, "`")
-		funcAggTag := funcNameStr + "_" + funcArguStr
-		if _, exist := aggMap[funcArguStr]; !exist {
-			aggMap[funcArguStr] = make(map[string]int)
+		var funcAggTag string
+		if funcExpr.Distinct {
+			funcAggTag = funcNameStr + "_distinct_" + funcArguStr
+		} else {
+			funcAggTag = funcNameStr + "_" + funcArguStr
 		}
+
 		switch funcNameStr {
 		case "count":
 			// no need to handle since the size of bucket is always returned
 			if funcArguStr == "*" {
 				continue
 			}
-			if _, exist := aggMap[funcArguStr][funcNameStr]; exist {
+			if _, exist := aggTagSet[funcAggTag]; exist {
 				continue
 			}
-			aggMap[funcArguStr][funcNameStr] = 1
+			aggTagSet[funcAggTag] = 1
 			var aggStr string
 			if funcExpr.Distinct {
 				aggStr = fmt.Sprintf(`"%v": {"cardinality": {"field": "%v"}}`, funcAggTag, funcArguStr)
@@ -91,11 +133,14 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err 
 			}
 			aggSlice = append(aggSlice, aggStr)
 		case "avg", "max", "min", "sum", "stats":
-			if _, exist := aggMap[funcArguStr][funcNameStr]; exist {
+			if funcExpr.Distinct {
+				err = fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, funcNameStr)
+				return "", err
+			}
+			if _, exist := aggTagSet[funcAggTag]; exist {
 				continue
 			}
-			aggMap[funcArguStr][funcNameStr] = 1
-			// TODO: optimization: group multiple aggregation on the same colName as stats
+			aggTagSet[funcAggTag] = 1
 			aggStr := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, funcAggTag, funcNameStr, funcArguStr)
 			aggSlice = append(aggSlice, aggStr)
 		default:
@@ -103,15 +148,23 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr) (dsl string, err 
 			return "", err
 		}
 	}
+	// check the order function is valid
+	for orderTag := range orderTagSet {
+		if _, exist := aggTagSet[orderTag]; !exist && orderTag != "_count" {
+			err = fmt.Errorf(`esql: order by not specified aggregation function %v`, orderTag)
+			return "", err
+		}
+	}
+
 	if len(aggSlice) > 0 {
 		dsl = "{" + strings.Join(aggSlice, ",") + "}"
 	}
 	return dsl, nil
 }
 
-func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []string, error) {
+func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []string, []string, error) {
 	var aggFuncExprSlice []*sqlparser.FuncExpr
-	var colNameSlice []string
+	var colNameSlice, aggNameSlice []string
 	for _, selectExpr := range expr {
 		// from sqlparser's definition, we need to first convert the selectExpr to AliasedExpr
 		// and then check whether AliasedExpr is a FuncExpr or just ColName
@@ -122,17 +175,18 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 			case *sqlparser.FuncExpr:
 				funcExpr := aliasedExpr.Expr.(*sqlparser.FuncExpr)
 				aggFuncExprSlice = append(aggFuncExprSlice, funcExpr)
+				aggNameSlice = append(aggNameSlice, sqlparser.String(funcExpr.Exprs))
 			case *sqlparser.ColName:
 				colName := aliasedExpr.Expr.(*sqlparser.ColName)
 				colNameSlice = append(colNameSlice, strings.Trim(sqlparser.String(colName), "`"))
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		default:
 		}
 	}
-	return aggFuncExprSlice, colNameSlice, nil
+	return aggFuncExprSlice, colNameSlice, aggNameSlice, nil
 }
 
 func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSet map[string]int, err error) {
@@ -154,6 +208,6 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 	}
 	dsl = strings.Join(groupByStrSlice, ",")
 	// TODO: magic size number, use "after" to page
-	dsl = fmt.Sprintf(`"composite": {"size": 1000, "sources": [%v]}`, dsl)
+	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, 1000, dsl)
 	return dsl, colNameSet, nil
 }
