@@ -66,6 +66,7 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser.OrderBy) (dsl string, err error) {
 	var aggSlice, orderAggsSlice, orderAggsDirSlice []string
 
+	// TODO: better to group this part as a separated function
 	// handle order by aggregation functions
 	orderTagSet := make(map[string]int)
 	for _, orderExpr := range orderBy {
@@ -213,7 +214,7 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 		}
 	}
 	dsl = strings.Join(groupByStrSlice, ",")
-	// TODO: magic size number, use "after" to page
+	// TODO: magic size number, use "after" for pagination
 	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, 1000, dsl)
 	return dsl, colNameSet, nil
 }

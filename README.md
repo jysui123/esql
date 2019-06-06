@@ -29,9 +29,9 @@
     - [x] ORDER BY column name
     - [x] ORDER BY aggregation function
 - [x] select specific columns
+- [ ] keyword: HAVING
 
 ### M4
-- [ ] keyword: HAVING
 - [ ] special handling: ExecutionTime field
 - [ ] key whitelist filtering
 - [ ] column name filtering
