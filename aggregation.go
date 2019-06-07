@@ -24,6 +24,10 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	if err = e.checkAggCompatibility(colNameSlice, colNameSetGroupBy, aggNameSlice); err != nil {
 		return "", err
 	}
+	if len(sel.GroupBy) == 0 && sel.Having != nil {
+		err = fmt.Errorf(`esql: HAVING used without GROUP BY`)
+		return "", err
+	}
 
 	// handle selected aggregation functions
 	aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, err := e.getAggSelect(aggFuncExprSlice)
@@ -38,10 +42,10 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	}
 
 	// handle having aggregation functions
-	// aggNameHavingSlice, aggTargetHavingSlice, aggTagHavingSlice, aggTagHavingSet, err := e.getAggHaving(sel.Having)
-	// if err != nil {
-	// 	return "", err
-	// }
+	script, aggNameHavingSlice, aggTargetHavingSlice, aggTagHavingSlice, aggTagHavingSet, err := e.getAggHaving(sel.Having)
+	if err != nil {
+		return "", err
+	}
 
 	// add necessary aggregations originated from order by and having
 	for tag, i := range aggTagOrderBySet {
@@ -50,6 +54,14 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 			aggNameSlice = append(aggNameSlice, aggNameOrderBySlice[i])
 			aggTargetSlice = append(aggTargetSlice, aggTargetOrderBySlice[i])
 			aggTagSlice = append(aggTagSlice, aggTagOrderBySlice[i])
+		}
+	}
+	for tag, i := range aggTagHavingSet {
+		if _, exist := aggTagSet[tag]; !exist && tag != "_count" {
+			aggTagSet[tag] = len(aggTagSet)
+			aggNameSlice = append(aggNameSlice, aggNameHavingSlice[i])
+			aggTargetSlice = append(aggTargetSlice, aggTargetHavingSlice[i])
+			aggTagSlice = append(aggTagSlice, aggTagHavingSlice[i])
 		}
 	}
 
@@ -71,6 +83,15 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 			// TODO: magic size number
 			dslAggOrder = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, dslAggOrder, 1000)
 			dslAggSlice = append(dslAggSlice, dslAggOrder)
+		}
+		if script != "" {
+			var bucketPathSlice []string
+			for tag := range aggTagHavingSet {
+				bucketPathSlice = append(bucketPathSlice, fmt.Sprintf(`"%v": "%v"`, tag, tag))
+			}
+			bucketPathStr := strings.Join(bucketPathSlice, ",")
+			bucketFilterStr := fmt.Sprintf(`"having": {"bucket_selector": {"buckets_path": {%v}, "script": "%v"}}`, bucketPathStr, script)
+			dslAggSlice = append(dslAggSlice, bucketFilterStr)
 		}
 		dslAgg = "{" + strings.Join(dslAggSlice, ",") + "}"
 	}
@@ -104,16 +125,6 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 	return nil
 }
 
-func (e *ESql) getAggHaving(having *sqlparser.Where) ([]string, []string, []string, map[string]int, error) {
-	var aggNameSlice, aggTargetSlice, aggTagSlice []string
-	aggTagSet := make(map[string]int)
-	if having != nil {
-		err := fmt.Errorf(`esql: HAVING not supported`)
-		return nil, nil, nil, nil, err
-	}
-	return aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, nil
-}
-
 func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []string, []string, map[string]int, error) {
 	var aggNameSlice, aggTargetSlice, aggDirSlice, aggTagSlice []string
 	aggTagDirSet := make(map[string]string) // tag -> asc / desc
@@ -136,7 +147,12 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 					aggTagStr = "_count"
 				} else {
 					aggTargetParts := strings.Split(aggTargetStr, " ")
-					aggTagStr = aggNameStr + "_distinct_" + aggTargetParts[1]
+					if len(aggTargetParts) == 2 && strings.ToLower(aggTargetParts[0]) == "distinct" {
+						aggTagStr = aggNameStr + "_distinct_" + aggTargetParts[1]
+					} else {
+						err := fmt.Errorf(`esql: order by aggregation function %v input err`, aggStr+")")
+						return nil, nil, nil, nil, nil, err
+					}
 				}
 			case "sum", "min", "max", "avg":
 				if strings.Contains(aggStr, "distinct") {
