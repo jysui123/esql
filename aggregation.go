@@ -67,6 +67,7 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 
 // }
 
+// TODO: handle ORDER BY agg where agg is not in SELECT clause
 func (e *ESql) convertOrderByAggExpr(orderBy sqlparser.OrderBy) ([]string, map[string]int, error) {
 	var aggSlice, orderAggSlice, orderAggDirSlice []string
 	orderTagSet := make(map[string]int)
@@ -152,7 +153,8 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser
 				aggStr = fmt.Sprintf(`"%v": {"value_count": {"field": "%v"}}`, funcAggTag, funcArguStr)
 			}
 			aggSlice = append(aggSlice, aggStr)
-		case "avg", "max", "min", "sum", "stats":
+		// TODO: handle stats function
+		case "avg", "max", "min", "sum":
 			if funcExpr.Distinct {
 				err = fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, funcNameStr)
 				return "", err
