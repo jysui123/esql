@@ -63,11 +63,12 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 	return nil
 }
 
-func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser.OrderBy) (dsl string, err error) {
-	var aggSlice, orderAggsSlice, orderAggsDirSlice []string
+// func (e *ESql) convertHavingExpr(having *sqlparser.Where) ([]string, map[string]int, error) {
 
-	// TODO: better to group this part as a separated function
-	// handle order by aggregation functions
+// }
+
+func (e *ESql) convertOrderByAggExpr(orderBy sqlparser.OrderBy) ([]string, map[string]int, error) {
+	var aggSlice, orderAggSlice, orderAggDirSlice []string
 	orderTagSet := make(map[string]int)
 	for _, orderExpr := range orderBy {
 		orderTargetStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
@@ -81,8 +82,8 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser
 			// convert count_distinct colName to count_distinct_colName, to match the aggregation tag
 			orderAggStr = strings.Replace(orderAggStr, " ", "_", -1)
 			if strParts[0] != "count" && strings.Contains(orderAggStr, "distinct") {
-				err = fmt.Errorf(`esql: order by aggregation function %v w/ DISTINCT not supported`, orderAggStr)
-				return "", err
+				err := fmt.Errorf(`esql: order by aggregation function %v w/ DISTINCT not supported`, orderAggStr)
+				return nil, nil, err
 			}
 			if strParts[0] == "count" && !strings.Contains(orderAggStr, "distinct") {
 				orderAggStr = "_count"
@@ -90,15 +91,15 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser
 			// avoid duplicate
 			if _, exist := orderTagSet[orderAggStr]; !exist {
 				orderTagSet[orderAggStr] = 1
-				orderAggsSlice = append(orderAggsSlice, orderAggStr)
-				orderAggsDirSlice = append(orderAggsDirSlice, orderExpr.Direction)
+				orderAggSlice = append(orderAggSlice, orderAggStr)
+				orderAggDirSlice = append(orderAggDirSlice, orderExpr.Direction)
 			}
 		}
 	}
 	if len(orderTagSet) > 0 {
 		var bucketSortSlice []string
-		for i := 0; i < len(orderAggsSlice); i++ {
-			bucketSortStr := fmt.Sprintf(`{"%v": {"order": "%v"}}`, orderAggsSlice[i], orderAggsDirSlice[i])
+		for i := 0; i < len(orderAggSlice); i++ {
+			bucketSortStr := fmt.Sprintf(`{"%v": {"order": "%v"}}`, orderAggSlice[i], orderAggDirSlice[i])
 			bucketSortSlice = append(bucketSortSlice, bucketSortStr)
 		}
 		aggSortStr := strings.Join(bucketSortSlice, ",")
@@ -106,6 +107,18 @@ func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser
 		aggSortStr = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, aggSortStr, 1000)
 		aggSlice = append(aggSlice, aggSortStr)
 	}
+	return aggSlice, orderTagSet, nil
+}
+
+func (e *ESql) convertAggFuncExpr(exprs []*sqlparser.FuncExpr, orderBy sqlparser.OrderBy) (dsl string, err error) {
+	var aggSlice []string
+
+	// handle order by aggregation functions
+	orderAggSlice, orderTagSet, err := e.convertOrderByAggExpr(orderBy)
+	if err != nil {
+		return "", nil
+	}
+	aggSlice = append(aggSlice, orderAggSlice...)
 
 	aggTagSet := make(map[string]int) // used for detect conflict between agg and order by
 	for _, funcExpr := range exprs {
