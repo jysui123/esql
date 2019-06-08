@@ -7,6 +7,20 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
+var oppositeOperator = map[string]string{
+	"=":        "!=",
+	"!=":       "=",
+	"<":        ">=",
+	"<=":       ">",
+	">":        "<=",
+	">=":       "<",
+	"<>":       "=",
+	"in":       "not in",
+	"like":     "not like",
+	"not in":   "in",
+	"not like": "like",
+}
+
 // ESql is used to hold necessary information that required in parsing
 type ESql struct {
 	whiteList map[string]interface{}
@@ -285,31 +299,11 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	}
 	op := comparisonExpr.Operator
 	if not {
-		switch comparisonExpr.Operator {
-		case "=":
-			op = "!="
-		case "<":
-			op = ">="
-		case "<=":
-			op = ">"
-		case ">":
-			op = "<="
-		case ">=":
-			op = "<"
-		case "<>", "!=":
-			op = "="
-		case "in":
-			op = "not in"
-		case "not in":
-			op = "in"
-		case "like":
-			op = "not like"
-		case "not like":
-			op = "like"
-		default:
+		if _, exist := oppositeOperator[op]; !exist {
 			err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 			return "", err
 		}
+		op = oppositeOperator[op]
 	}
 	// generate dsl according to operator
 	var dsl string

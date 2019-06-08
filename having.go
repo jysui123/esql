@@ -7,6 +7,16 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
+var validHavingOp = map[string]int{
+	"=":  1,
+	"!=": 1,
+	"<":  1,
+	"<=": 1,
+	">":  1,
+	">=": 1,
+	"<>": 1,
+}
+
 func (e *ESql) getAggHaving(having *sqlparser.Where) (string, []string, []string, []string, map[string]int, error) {
 	var aggNameSlice, aggTargetSlice, aggTagSlice []string
 	aggTagSet := make(map[string]int)
@@ -26,19 +36,69 @@ func (e *ESql) convertHavingExpr(expr sqlparser.Expr, aggNameSlice *[]string, ag
 
 	switch expr.(type) {
 	case *sqlparser.ComparisonExpr:
-		return e.convertHavingComparisionExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+		return e.convertHavingComparisionExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, false)
+	case *sqlparser.AndExpr:
+		return e.convertHavingAndExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	case *sqlparser.OrExpr:
+		return e.convertHavingOrExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	case *sqlparser.NotExpr:
+		return e.convertHavingNotExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	case *sqlparser.ParenExpr:
+		return e.convertHavingParenExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
 	default:
 		err := fmt.Errorf(`esql: %T expression in HAVING no supported`, expr)
 		return "", err
 	}
 }
 
-func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+func (e *ESql) convertHavingAndExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
 	aggTagSlice *[]string, aggTagSet map[string]int) (string, error) {
+	return "", nil
+}
+
+func (e *ESql) convertHavingOrExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+	aggTagSlice *[]string, aggTagSet map[string]int) (string, error) {
+	return "", nil
+}
+
+func (e *ESql) convertHavingNotExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+	aggTagSlice *[]string, aggTagSet map[string]int) (string, error) {
+
+	parenExpr := expr.(*sqlparser.ParenExpr)
+	script, err := e.convertHavingExpr(parenExpr.Expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(`(%v)`, script), nil
+}
+
+func (e *ESql) convertHavingParenExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+	aggTagSlice *[]string, aggTagSet map[string]int) (string, error) {
+	return "", nil
+}
+
+func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+	aggTagSlice *[]string, aggTagSet map[string]int, not bool) (string, error) {
 
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
 	var funcExprs []*sqlparser.FuncExpr
 	op := comparisonExpr.Operator
+
+	if not {
+		if _, exist := oppositeOperator[op]; !exist {
+			err := fmt.Errorf(`esql: %s operator not supported in having comparison clause`, comparisonExpr.Operator)
+			return "", err
+		}
+		op = oppositeOperator[op]
+		if _, exist := validHavingOp[op]; !exist {
+			err := fmt.Errorf(`esql: %s operator not supported in having comparison clause`, comparisonExpr.Operator)
+			return "", err
+		}
+	}
+	// SQL eq is = but painless eq is ==
+	if op == "=" {
+		op = "=="
+	}
 
 	// lhs
 	leftFuncExpr, ok := comparisonExpr.Left.(*sqlparser.FuncExpr)
