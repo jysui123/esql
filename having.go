@@ -65,7 +65,7 @@ func (e *ESql) convertHavingAndExpr(expr sqlparser.Expr, aggNameSlice *[]string,
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(`((%v) && (%v))`, scriptLeft, scriptRight), nil
+	return fmt.Sprintf(`%v && %v`, scriptLeft, scriptRight), nil
 }
 
 func (e *ESql) convertHavingOrExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
@@ -82,7 +82,7 @@ func (e *ESql) convertHavingOrExpr(expr sqlparser.Expr, aggNameSlice *[]string, 
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(`((%v) || (%v))`, scriptLeft, scriptRight), nil
+	return fmt.Sprintf(`%v || %v`, scriptLeft, scriptRight), nil
 }
 
 func (e *ESql) convertHavingParenExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
@@ -104,7 +104,7 @@ func (e *ESql) convertHavingNotExpr(expr sqlparser.Expr, aggNameSlice *[]string,
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(`!(%v)`, script), nil
+	return fmt.Sprintf(`!%v`, script), nil
 }
 
 func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
