@@ -29,7 +29,7 @@
     - [x] ORDER BY column name
     - [x] ORDER BY aggregation function
 - [x] select specific columns
-- [ ] keyword: HAVING
+- [x] keyword: HAVING
 
 ### M4
 - [ ] special handling: ExecutionTime field
@@ -99,6 +99,7 @@ Testing steps:
 |LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
 |group by multiple columns|"composite" flattened grouping|nested "aggs" field|
 |order by aggregation function|use "bucket_sort" to order by aggregation functions, also do validation check|not supported|
+|HAVING expression|supported, using "bucket_selector" and painless scripting language|not supported|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|return all document contents|
 |optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|
@@ -117,3 +118,4 @@ Testing steps:
 - `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
 - ES SQL API does not support `SELECT DISTINCT`, but we can achieve the same result by `COUNT(DISTINCT colName)`
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
+- ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it

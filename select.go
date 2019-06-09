@@ -105,13 +105,10 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		}
 	}
 
-	var dslKeySlice = []string{"size", "_source", "stored_fields", "query", "from",
-		"aggs", "search_after", "docvalue_fields", "sort"}
+	// generate the final json query
 	var dslQuerySlice []string
-	for _, k := range dslKeySlice {
-		if v, exist := dslMap[k]; exist {
-			dslQuerySlice = append(dslQuerySlice, fmt.Sprintf(`"%v" : %v`, k, v))
-		}
+	for tag, content := range dslMap {
+		dslQuerySlice = append(dslQuerySlice, fmt.Sprintf(`"%v": %v`, tag, content))
 	}
 
 	dsl = "{" + strings.Join(dslQuerySlice, ",") + "}"
@@ -132,22 +129,11 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	case *sqlparser.OrExpr:
 		return e.convertOrExpr(expr, parent)
 	case *sqlparser.ParenExpr:
-		boolExpr := expr.(*sqlparser.ParenExpr).Expr
-		return e.convertWhereExpr(boolExpr, expr)
+		return e.convertParenExpr(expr, parent)
 	case *sqlparser.NotExpr:
 		return e.convertNotExpr(expr, parent)
 	case *sqlparser.RangeCond:
-		rangeCond := expr.(*sqlparser.RangeCond)
-		lhs, ok := rangeCond.Left.(*sqlparser.ColName)
-		if !ok {
-			return "", fmt.Errorf("esql: invalid range column name")
-		}
-		lhsStr := sqlparser.String(lhs)
-		fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
-		toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
-
-		dsl := fmt.Sprintf(`{"range" : {"%v" : {"from" : "%v", "to" : "%v"}}}`, lhsStr, fromStr, toStr)
-		return dsl, nil
+		return e.convertBetweenExpr(expr, parent)
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(expr, parent, false)
 	default:
@@ -156,7 +142,26 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	}
 }
 
-// ! dsl must_not is not an equivalent to sql NOT, should convert the inside expression accordingly
+func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
+	rangeCond := expr.(*sqlparser.RangeCond)
+	lhs, ok := rangeCond.Left.(*sqlparser.ColName)
+	if !ok {
+		return "", fmt.Errorf("esql: invalid range column name")
+	}
+	lhsStr := sqlparser.String(lhs)
+	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
+	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
+
+	dsl := fmt.Sprintf(`{"range": {"%v": {"from": "%v", "to": "%v"}}}`, lhsStr, fromStr, toStr)
+	return dsl, nil
+}
+
+func (e *ESql) convertParenExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
+	exprInside := expr.(*sqlparser.ParenExpr).Expr
+	return e.convertWhereExpr(exprInside, expr)
+}
+
+// * dsl must_not is not an equivalent to sql NOT, should convert the inside expression accordingly
 func (e *ESql) convertNotExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
 	notExpr := expr.(*sqlparser.NotExpr)
 	exprInside := notExpr.Expr

@@ -97,6 +97,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	}
 
 	// generate final dsl for aggs field
+	// here "groupby" is just a tag and can be any unreserved word
 	if len(dslGroupBy) == 0 && len(aggTagSlice) == 0 {
 		dsl = ""
 	} else if len(aggTagSlice) == 0 {
