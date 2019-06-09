@@ -8,17 +8,19 @@ import (
 )
 
 var oppositeOperator = map[string]string{
-	"=":        "!=",
-	"!=":       "=",
-	"<":        ">=",
-	"<=":       ">",
-	">":        "<=",
-	">=":       "<",
-	"<>":       "=",
-	"in":       "not in",
-	"like":     "not like",
-	"not in":   "in",
-	"not like": "like",
+	"=":                    "!=",
+	"!=":                   "=",
+	"<":                    ">=",
+	"<=":                   ">",
+	">":                    "<=",
+	">=":                   "<",
+	"<>":                   "=",
+	"in":                   "not in",
+	"like":                 "not like",
+	"not in":               "in",
+	"not like":             "like",
+	sqlparser.IsNullStr:    sqlparser.IsNotNullStr,
+	sqlparser.IsNotNullStr: sqlparser.IsNullStr,
 }
 
 // ESql is used to hold necessary information that required in parsing
@@ -266,14 +268,11 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 	dsl := ""
 	op := isExpr.Operator
 	if not {
-		switch isExpr.Operator {
-		case sqlparser.IsNullStr:
-			op = sqlparser.IsNotNullStr
-		case sqlparser.IsNotNullStr:
-			op = sqlparser.IsNullStr
-		default:
-			return "", fmt.Errorf("esql: is expression only support is null and is not null")
+		if _, exist := oppositeOperator[op]; !exist {
+			err := fmt.Errorf("esql: is expression only support is null and is not null")
+			return "", err
 		}
+		op = oppositeOperator[op]
 	}
 	switch op {
 	case sqlparser.IsNullStr:
