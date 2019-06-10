@@ -154,7 +154,7 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, no
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
 
-	dsl := fmt.Sprintf(`{"range": {"%v": {"from": "%v", "to": "%v"}}}`, lhsStr, fromStr, toStr)
+	dsl := fmt.Sprintf(`{"range": {"%v": {"gte": "%v", "lte": "%v"}}}`, lhsStr, fromStr, toStr)
 	if not {
 		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
 	}

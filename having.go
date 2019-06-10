@@ -59,8 +59,8 @@ func (e *ESql) convertHavingBetweenExpr(expr sqlparser.Expr, aggNameSlice *[]str
 	rangeCond := expr.(*sqlparser.RangeCond)
 	lhs := rangeCond.Left
 	from, to := rangeCond.From, rangeCond.To
-	var expr1 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: from, Operator: ">"}
-	var expr2 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: to, Operator: "<"}
+	var expr1 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: from, Operator: ">="}
+	var expr2 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: to, Operator: "<="}
 	var expr3 sqlparser.Expr = &sqlparser.AndExpr{Left: expr1, Right: expr2}
 
 	script, err := e.convertHavingAndExpr(expr3, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
