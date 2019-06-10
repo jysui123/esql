@@ -45,10 +45,32 @@ func (e *ESql) convertHavingExpr(expr sqlparser.Expr, aggNameSlice *[]string, ag
 		return e.convertHavingNotExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
 	case *sqlparser.ParenExpr:
 		return e.convertHavingParenExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	case *sqlparser.RangeCond:
+		return e.convertHavingBetweenExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
 	default:
 		err := fmt.Errorf(`esql: %T expression in HAVING no supported`, expr)
 		return "", err
 	}
+}
+
+func (e *ESql) convertHavingBetweenExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,
+	aggTagSlice *[]string, aggTagSet map[string]int) (string, error) {
+
+	rangeCond := expr.(*sqlparser.RangeCond)
+	lhs := rangeCond.Left
+	from, to := rangeCond.From, rangeCond.To
+	var expr1 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: from, Operator: ">"}
+	var expr2 sqlparser.Expr = &sqlparser.ComparisonExpr{Left: lhs, Right: to, Operator: "<"}
+	var expr3 sqlparser.Expr = &sqlparser.AndExpr{Left: expr1, Right: expr2}
+
+	script, err := e.convertHavingAndExpr(expr3, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	if err != nil {
+		return "", err
+	}
+	// here parenthesis is to deal with the case when an not(!) operator out side
+	// if no parenthesis, NOT xxx BETWEEN a and b -> !xxx > a && xxx < b
+	script = fmt.Sprintf(`(%v)`, script)
+	return script, nil
 }
 
 func (e *ESql) convertHavingAndExpr(expr sqlparser.Expr, aggNameSlice *[]string, aggTargetSlice *[]string,

@@ -37,7 +37,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	// a map that contains the main components of a query
 	dslMap := make(map[string]interface{})
 
-	// check whether user passes in where clause
+	// handle WHERE keyword
 	if sel.Where != nil {
 		dslQuery, err := e.convertWhereExpr(sel.Where.Expr, rootParent)
 		if err != nil {
@@ -46,8 +46,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["query"] = dslQuery
 	}
 
-	// check whether user passes in limit clause
-	// TODO: pagination
+	// handle LIMIT and OFFSET keyword
 	dslMap["size"] = 1000
 	if sel.Limit != nil {
 		if sel.Limit.Offset != nil {
@@ -56,7 +55,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
 	}
 
-	// check whether user passes only 1 from clause
+	// handle FROM keyword, currently only support 1 target table
 	if len(sel.From) != 1 {
 		if len(sel.From) == 0 {
 			err = fmt.Errorf("esql: invalid from expressino: no from expression specified")
@@ -66,7 +65,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 
-	// check whether user specify target columns
+	// handle SELECT keyword
 	_, selectedColNameSlice, _, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", err
@@ -76,7 +75,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["_source"] = fmt.Sprintf(`{"includes": [%v]}`, colNames)
 	}
 
-	// check whther user passes aggregations
+	// handle all aggregations, including GROUP BY, SELECT <agg function>, ORDER BY <agg function>, HAVING
 	dslAgg, err := e.convertAgg(sel)
 	if err != nil {
 		return "", err
@@ -89,7 +88,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["size"] = 0
 	}
 
-	// check whether user specify order rules
+	// handle ORDER BY <column name>
 	// if it is an aggregate query, no point to order
 	if _, exist := dslMap["aggs"]; !exist {
 		var orderBySlice []string
@@ -135,7 +134,7 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	case *sqlparser.NotExpr:
 		return e.convertNotExpr(expr, parent)
 	case *sqlparser.RangeCond:
-		return e.convertBetweenExpr(expr, parent)
+		return e.convertBetweenExpr(expr, parent, false)
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(expr, parent, false)
 	default:
@@ -144,17 +143,21 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	}
 }
 
-func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
+func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	rangeCond := expr.(*sqlparser.RangeCond)
 	lhs, ok := rangeCond.Left.(*sqlparser.ColName)
 	if !ok {
-		return "", fmt.Errorf("esql: invalid range column name")
+		err := fmt.Errorf("esql: invalid range column name")
+		return "", err
 	}
 	lhsStr := sqlparser.String(lhs)
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
 
 	dsl := fmt.Sprintf(`{"range": {"%v": {"from": "%v", "to": "%v"}}}`, lhsStr, fromStr, toStr)
+	if not {
+		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
+	}
 	return dsl, nil
 }
 
@@ -193,13 +196,11 @@ func (e *ESql) convertNotExpr(expr sqlparser.Expr, parent sqlparser.Expr) (strin
 		return e.convertComparisionExpr(exprInside, parent, true)
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(exprInside, parent, true)
+	case *sqlparser.RangeCond:
+		return e.convertBetweenExpr(exprInside, parent, true)
 	default:
-		// for BETWEEN expr
-		dsl, err := e.convertWhereExpr(exprInside, expr)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl), nil
+		err := fmt.Errorf("esql: %T expression not supported", exprInside)
+		return "", err
 	}
 }
 

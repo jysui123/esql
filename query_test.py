@@ -31,8 +31,8 @@ class TestGeneratedDSL(unittest.TestCase):
             self.assertNotEqual(res, None, 'dsl query {} failed'.format(i + 1))
 
             if 'HAVING' in sqls[i] or 'having' in sqls[i]:
-                print ('query {} not yet supported'.format(i + 1))
-                return
+                print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
+                continue
 
             sqlQueryPayload = {"query": sqls[i]}
             officialDsl = requests.get(self.urlSQL, data=json.dumps(sqlQueryPayload), headers=self.headers)
@@ -46,7 +46,7 @@ class TestGeneratedDSL(unittest.TestCase):
                     self.check_equal_analysis(res, officialRes, i)
             else:
                 if 'COUNT(*)' in sqls[i]:
-                    print ('query {} not yet supported'.format(i + 1))
+                    print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
                 else:
                     self.check_equal(res, officialRes, i)
 
@@ -78,7 +78,7 @@ class TestGeneratedDSL(unittest.TestCase):
         officialCounts = []
         counts = []
         if 'aggregations' not in officialRes:
-            print ('query {} not yet supported'.format(i + 1))
+            print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
             return
         for v in officialRes['aggregations']['groupby']['buckets']:
             officialCounts.append(v['doc_count'])
@@ -92,7 +92,7 @@ class TestGeneratedDSL(unittest.TestCase):
         print ('query {} returns {} groups, pass'.format(i + 1, len(counts)))
 
     def check_equal_analysis(self, res, officialRes, i):
-        print ('query {} not yet supported'.format(i + 1))
+        print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
 
 
 if __name__ == '__main__':
