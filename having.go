@@ -7,14 +7,14 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-var validHavingOp = map[string]int{
-	"=":  1,
-	"!=": 1,
-	"<":  1,
-	"<=": 1,
-	">":  1,
-	">=": 1,
-	"<>": 1,
+var op2PainlessOp = map[string]string{
+	"=":  "==",
+	"!=": "!==",
+	"<":  "<",
+	"<=": "<=",
+	">":  ">",
+	">=": ">=",
+	"<>": "!==",
 }
 
 func (e *ESql) getAggHaving(having *sqlparser.Where) (string, []string, []string, []string, map[string]int, error) {
@@ -134,19 +134,13 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
 	var funcExprs []*sqlparser.FuncExpr
-	op := comparisonExpr.Operator
 
-	if _, exist := validHavingOp[op]; !exist {
+	if _, exist := op2PainlessOp[comparisonExpr.Operator]; !exist {
 		err := fmt.Errorf(`esql: %s operator not supported in having comparison clause`, comparisonExpr.Operator)
 		return "", err
 	}
-	// painless operator is slightly different
-	if op == "=" {
-		op = "=="
-	}
-	if op == "!=" || op == "<>" {
-		op = "!=="
-	}
+	// convert SQL operator format to equivalent painless operator
+	op := op2PainlessOp[comparisonExpr.Operator]
 
 	// lhs
 	leftFuncExpr, ok := comparisonExpr.Left.(*sqlparser.FuncExpr)
