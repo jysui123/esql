@@ -5,10 +5,11 @@ import unittest
 class TestGeneratedDSL(unittest.TestCase):
     urlSQL = 'http://localhost:9200/_xpack/sql/translate'
     url = 'http://localhost:9200/test/_search'
-    # urlFull = 'http://localhost:9200/test/_search?size=200'
+    urlFull = 'http://localhost:9200/test/_search?size=1000'
     headers = {"Content-type": "application/json"}
     sqlFileName = 'sqls.txt'
     dslFileName = 'dsls.txt'
+    notTestedKeywords = ['LIKE', 'HAVING', 'REGEXP']
 
     def test_dsl(self):
         sqls = []
@@ -23,20 +24,24 @@ class TestGeneratedDSL(unittest.TestCase):
         for i in range(len(sqls)):
             # * LIMIT is not tested since the order is not specified
             # url = self.urlDefault if 'LIMIT' in sqls[i] or 'limit' in sqls[i] else self.urlFull
-            url = self.url
 
-            res = requests.get(url, data=json.loads(json.dumps(dsls[i])), headers=self.headers)
+            res = requests.get(self.url, data=json.loads(json.dumps(dsls[i])), headers=self.headers)
             # convert responses to json
             res = res.json() if res and res.status_code == 200 else None
             self.assertNotEqual(res, None, 'dsl query {} failed'.format(i + 1))
 
-            if 'HAVING' in sqls[i] or 'having' in sqls[i]:
-                print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
+            skip = False
+            for k in self.notTestedKeywords:
+                if k in sqls[i] or k.lower() in sqls[i]:
+                    print ('query {} with {} correct syntacticly, thorough test not covered'.format(i + 1, k))
+                    skip = True
+                    break
+            if skip:
                 continue
 
             sqlQueryPayload = {"query": sqls[i]}
             officialDsl = requests.get(self.urlSQL, data=json.dumps(sqlQueryPayload), headers=self.headers)
-            officialRes = requests.get(url, data=officialDsl, headers=self.headers)
+            officialRes = requests.get(self.urlFull if 'LIMIT' not in sqls[i] else self.url, data=officialDsl, headers=self.headers)
             officialRes = officialRes.json() if officialRes and officialRes.status_code == 200 else None
             self.assertNotEqual(officialRes, None, 'official dsl query {} failed'.format(i+1))
             if 'aggs' in dsls[i]:
@@ -52,7 +57,7 @@ class TestGeneratedDSL(unittest.TestCase):
 
     def check_equal(self, res, officialRes, i):
         self.assertEqual(officialRes['hits']['total'], res['hits']['total'], 'number of hits in query {} not match\n\tget {}, expected {}'.format(i + 1, res['hits']['total'], officialRes['hits']['total']))
-        self.assertEqual(len(officialRes['hits']['hits']), len(res['hits']['hits']), 'number of result in query {} not match\n\tget {}, expected {}'.format(i+1, res['hits']['total'], officialRes['hits']['total']))
+        self.assertEqual(len(officialRes['hits']['hits']), len(res['hits']['hits']), 'number of result in query {} not match\n\tget {}, expected {}'.format(i+1, len(res['hits']['hits']), len(officialRes['hits']['hits'])))
         # check all the row id matches
         officialIds = []
         ids = []
@@ -92,7 +97,7 @@ class TestGeneratedDSL(unittest.TestCase):
         print ('query {} returns {} groups, pass'.format(i + 1, len(counts)))
 
     def check_equal_analysis(self, res, officialRes, i):
-        print ('query {} correct syntacticly, thorough test not covered'.format(i + 1))
+        print ('query {} with aggs without grouping correct syntacticly, thorough test not covered'.format(i + 1))
 
 
 if __name__ == '__main__':

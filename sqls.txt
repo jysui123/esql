@@ -44,6 +44,8 @@ SELECT * FROM test WHERE colB NOT IN ('ab', 'bb') AND NOT (colE > 8 OR NOT colD 
 SELECT colB FROM test GROUP BY colB ORDER BY colB
 SELECT colB, colA FROM test GROUP BY colB, colB, colA, colA
 SELECT colB FROM test WHERE colE > 6 and date IS NOT NULL GROUP BY colB
+SELECT * FROM test WHERE colC REGEXP '[ab]{3} a{2}[ab] b+'
+SELECT * FROM test WHERE colB LIKE '_a_' OR colB LIKE 'b%'
 SELECT colB, colA FROM test GROUP BY colB, colA
 SELECT COUNT(DISTINCT colB) FROM test
 SELECT COUNT(DISTINCT colB), COUNT(colB) FROM test

@@ -17,8 +17,10 @@ var oppositeOperator = map[string]string{
 	"<>":                   "=",
 	"in":                   "not in",
 	"like":                 "not like",
+	"regexp":               "not regexp",
 	"not in":               "in",
 	"not like":             "like",
+	"not regexp":           "regexp",
 	sqlparser.IsNullStr:    sqlparser.IsNotNullStr,
 	sqlparser.IsNotNullStr: sqlparser.IsNullStr,
 }
@@ -336,14 +338,16 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		rhsStr = strings.Trim(rhsStr, ")")
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"terms" : {"%v" : [%v]}}}}`, lhsStr, rhsStr)
 	case "like":
-		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
-		//dsl = fmt.Sprintf(`{"wildcard" : {"%v" : {"wildcard": "%v"}}}`, lhsStr, rhsStr)
-		dsl = fmt.Sprintf(`{"regexp" : {"%v" : "%v"}}`, lhsStr, rhsStr)
+		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
+		dsl = fmt.Sprintf(`{"wildcard" : {"%v" : {"wildcard": "%v"}}}`, lhsStr, rhsStr)
 	case "not like":
-		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
-		//dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"wildcard" : {"%v" : {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
+		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
+		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"wildcard" : {"%v" : {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
+	case "regexp":
+		dsl = fmt.Sprintf(`{"regexp" : {"%v" : "%v"}}`, lhsStr, rhsStr)
+	case "not regexp":
 		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"regexp" : {"%v" : "%v"}}}}`, lhsStr, rhsStr)
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)

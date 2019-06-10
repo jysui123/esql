@@ -119,3 +119,4 @@ Testing steps:
 - ES SQL API does not support `SELECT DISTINCT`, but we can achieve the same result by `COUNT(DISTINCT colName)`
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
 - ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
+- to use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text

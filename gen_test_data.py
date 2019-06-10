@@ -16,7 +16,7 @@ schema = {
     "properties": {
         "colA": {"type": "keyword"},
         "colB": {"type": "keyword"},
-        "colC": {"type": "text"},
+        "colC": {"type": "keyword"},
         "colD": {"type": "long"},
         "colE": {"type": "double"},
         "date": {"type": "date"}
