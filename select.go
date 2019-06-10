@@ -2,37 +2,11 @@ package esql
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/xwb1989/sqlparser"
 )
-
-var oppositeOperator = map[string]string{
-	"=":                    "!=",
-	"!=":                   "=",
-	"<":                    ">=",
-	"<=":                   ">",
-	">":                    "<=",
-	">=":                   "<",
-	"<>":                   "=",
-	"in":                   "not in",
-	"like":                 "not like",
-	"regexp":               "not regexp",
-	"not in":               "in",
-	"not like":             "like",
-	"not regexp":           "regexp",
-	sqlparser.IsNullStr:    sqlparser.IsNotNullStr,
-	sqlparser.IsNotNullStr: sqlparser.IsNullStr,
-}
-
-// ESql is used to hold necessary information that required in parsing
-type ESql struct {
-	whiteList map[string]interface{}
-}
-
-func (e *ESql) init(whiteListArg map[string]interface{}) {
-	e.whiteList = whiteListArg
-}
 
 func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	var rootParent sqlparser.Expr
@@ -136,7 +110,7 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	case *sqlparser.NotExpr:
 		return e.convertNotExpr(expr, parent)
 	case *sqlparser.RangeCond:
-		return e.convertBetweenExpr(expr, parent, false)
+		return e.convertBetweenExpr(expr, parent, true, true, false)
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(expr, parent, false)
 	default:
@@ -145,7 +119,7 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	}
 }
 
-func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
+func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fromInclusive bool, toInclusive bool, not bool) (string, error) {
 	rangeCond := expr.(*sqlparser.RangeCond)
 	lhs, ok := rangeCond.Left.(*sqlparser.ColName)
 	if !ok {
@@ -155,9 +129,34 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, no
 	lhsStr := sqlparser.String(lhs)
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
-
-	dsl := fmt.Sprintf(`{"range": {"%v": {"gte": "%v", "lte": "%v"}}}`, lhsStr, fromStr, toStr)
+	op := rangeCond.Operator
 	if not {
+		op = oppositeOperator[op]
+	}
+
+	// special handling for candece query with ExecutionTime field
+	if e.cadence {
+		if _, ok := strconv.Atoi(fromStr); ok != nil {
+			err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
+			return "", err
+		}
+		if fromNum, _ := strconv.Atoi(fromStr); fromNum < 0 {
+			fromInclusive = true
+			fromStr = "0"
+		}
+	}
+
+	gt := "gte"
+	lt := "lte"
+	if !fromInclusive {
+		gt = "gt"
+	}
+	if !toInclusive {
+		lt = "lt"
+	}
+
+	dsl := fmt.Sprintf(`{"range": {"%v": {"%v": "%v", "%v": "%v"}}}`, gt, lhsStr, lt, fromStr, toStr)
+	if op == sqlparser.NotBetweenStr {
 		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
 	}
 	return dsl, nil
@@ -199,7 +198,7 @@ func (e *ESql) convertNotExpr(expr sqlparser.Expr, parent sqlparser.Expr) (strin
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(exprInside, parent, true)
 	case *sqlparser.RangeCond:
-		return e.convertBetweenExpr(exprInside, parent, true)
+		return e.convertBetweenExpr(exprInside, parent, true, true, true)
 	default:
 		err := fmt.Errorf("esql: %T expression not supported", exprInside)
 		return "", err
@@ -291,7 +290,8 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	// extract lhs, and check lhs is a colName
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
-	colName, ok := comparisonExpr.Left.(*sqlparser.ColName)
+	lhsExpr := comparisonExpr.Left
+	colName, ok := lhsExpr.(*sqlparser.ColName)
 	if !ok {
 		return "", fmt.Errorf("esql: invalid comparison expression, lhs must be a column name")
 	}
@@ -300,7 +300,8 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 
 	// extract rhs
-	rhsStr, err := e.convertValExpr(comparisonExpr.Right)
+	rhsExpr := comparisonExpr.Right
+	rhsStr, err := e.convertValExpr(rhsExpr)
 	if err != nil {
 		return "", err
 	}
@@ -312,6 +313,29 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		}
 		op = oppositeOperator[op]
 	}
+
+	// in cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
+	if e.cadence && lhsStr == ExecutionTimeStr {
+		switch op {
+		case "<":
+			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
+			return e.convertBetweenExpr(expr1, parent, true, false, false)
+		case "<=":
+			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
+			return e.convertBetweenExpr(expr1, parent, true, true, false)
+		case ">", ">=":
+			if _, ok := strconv.Atoi(rhsStr); ok != nil {
+				err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
+				return "", err
+			}
+			if rhsNum, _ := strconv.Atoi(rhsStr); rhsNum < 0 {
+				op = ">="
+				rhsStr = "0"
+			}
+		default:
+		}
+	}
+
 	// generate dsl according to operator
 	var dsl string
 	switch op {
