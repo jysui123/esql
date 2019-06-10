@@ -24,7 +24,7 @@ var whiteList = map[string]interface{}{
 func TestGenDSL(t *testing.T) {
 	fmt.Println("Start generating DSL ...")
 	var e ESql
-	e.init(whiteList)
+	e.init(whiteList, false)
 	f, err := os.Open(testCases)
 	if err != nil {
 		t.Error("Fail to open testcase file")
