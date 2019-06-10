@@ -35,9 +35,9 @@
 - [ ] special handling: ExecutionTime field
 - [ ] key whitelist filtering
 - [ ] column name filtering
-- [ ] pagination, search after
+- [ ] pagination, search after (avoid using magic "size"=1000)
 - [ ] select regex column names
-- [ ] workflow ID as sorting tie breaker
+- [ ] run ID as sorting tie breaker
 - [ ] domain ID search
 
 ### M5
