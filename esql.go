@@ -54,12 +54,12 @@ func (e *ESql) init(whiteListArg []string, replaceListArg []string, replaceFuncA
 	if pageSizeArg > 0 {
 		e.pageSize = pageSizeArg
 	} else {
-		e.pageSize = defaultPageSize
+		e.pageSize = DefaultPageSize
 	}
 	if bucketNumberArg > 0 {
 		e.bucketNumber = bucketNumberArg
 	} else {
-		e.bucketNumber = defaultBucketNumber
+		e.bucketNumber = DefaultBucketNumber
 	}
 }
 
@@ -70,8 +70,8 @@ func (e *ESql) init(whiteListArg []string, replaceListArg []string, replaceFuncA
 // arguments:
 //     sql: the sql query needs conversion in string format
 // 	   pagination: variadic arguments that indicates es search_after for pagination
-func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string, err error) {
-	dsl, err = e.Convert(sql, pagination)
+func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
+	dsl, err = e.Convert(sql, domainID, pagination)
 	if err != nil {
 		return dsl, err
 	}
@@ -92,7 +92,7 @@ func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string,
 // arguments:
 //     sql: the sql query needs conversion in string format
 //     pagination: variadic arguments that indicates es search_after for pagination
-func (e *ESql) Convert(sql string, pagination ...interface{}) (dsl string, err error) {
+func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", err
@@ -101,7 +101,7 @@ func (e *ESql) Convert(sql string, pagination ...interface{}) (dsl string, err e
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), pagination)
+		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination)
 	default:
 		err = errors.New("esql: Queries other than select not supported")
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (dsl string, err error) {
+func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination ...interface{}) (dsl string, err error) {
 	var rootParent sqlparser.Expr
 	// a map that contains the main components of a query
 	dslMap := make(map[string]interface{})
@@ -20,6 +20,15 @@ func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (d
 			return "", err
 		}
 		dslMap["query"] = dslQuery
+	}
+	// cadence special handling: add domain ID query
+	if e.cadence {
+		domainIDQuery := fmt.Sprintf(`{"match_phrase": {"%v": {"query": "%v"}}}`, DomainID, domainID)
+		if sel.Where == nil {
+			dslMap["query"] = domainIDQuery
+		} else {
+			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v]}}`, domainIDQuery, dslMap["query"])
+		}
 	}
 
 	// handle FROM keyword, currently only support 1 target table
@@ -93,9 +102,9 @@ func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (d
 			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
 		}
-		// cadence special: add runID as sorting tie breaker
+		// cadence special handling: add runID as sorting tie breaker
 		if e.cadence {
-			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "asc"}`, tieBreaker)
+			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "asc"}`, TieBreaker)
 			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
 		}
 		if len(orderBySlice) > 0 {
@@ -346,7 +355,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	}
 
 	// special handling for cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
-	if e.cadence && lhsStr == ExecutionTimeStr {
+	if e.cadence && lhsStr == ExecutionTime {
 		switch op {
 		case "<":
 			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}

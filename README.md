@@ -66,10 +66,13 @@ Current Cadence query request processing steps are listed below:
 - setup search after for pagination
 
 **This project is based on [elasticsql](https://github.com/cch123/elasticsql)** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
-
+`func (*ESql) init([]string, []string, Replace, bool, int, int)`: initialize all parameters
+`func (*ESql) Convert(string, ...interface{}) (string, error)`: convert sql to es dsl
+`func (*ESql) ConvertPretty(string, ...interface{}) (string, error)`: convert sql to es dsl in an indented json format
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs.
+Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs:
+
 
 
 ## Testing Module

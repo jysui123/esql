@@ -59,7 +59,7 @@ func TestGenDSL(t *testing.T) {
 		t.Error("Fail to create dsl file")
 	}
 	for i, sql := range sqls {
-		dsl, err := e.Convert(sql)
+		dsl, err := e.Convert(sql, "0")
 		if err != nil {
 			t.Error(err)
 		}
@@ -82,7 +82,7 @@ func TestGenDSL(t *testing.T) {
 
 		f.WriteString(dsl)
 		f.WriteString("\n")
-		dslPretty, err := e.ConvertPretty(sql)
+		dslPretty, err := e.ConvertPretty(sql, "0")
 		if err != nil {
 			t.Error(err)
 		}
