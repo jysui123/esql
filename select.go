@@ -456,7 +456,7 @@ func (e *ESql) filterOrReplace(target string) (string, error) {
 	if e.replace != nil {
 		target = e.replace(target)
 	}
-	if e.filter != nil && !e.filter(target) {
+	if e.filter != nil && e.filter(target) {
 		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
 		return "", err
 	}
