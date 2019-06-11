@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 )
 
 var tableName = `inspections`
@@ -24,7 +25,7 @@ var groundTruth = ``
 func TestGenDSL(t *testing.T) {
 	fmt.Println("Start generating DSL ...")
 	var e ESql
-	e.init(nil, nil, nil, false, 0, 0)
+	e.Init()
 	f, err := os.Open(testCases)
 	if err != nil {
 		t.Error("Fail to open testcase file")
@@ -58,6 +59,7 @@ func TestGenDSL(t *testing.T) {
 	if err != nil {
 		t.Error("Fail to create dsl file")
 	}
+	start := time.Now()
 	for i, sql := range sqls {
 		dsl, err := e.Convert(sql, "0")
 		if err != nil {
@@ -90,6 +92,8 @@ func TestGenDSL(t *testing.T) {
 		fp.WriteString(dslPretty)
 		fmt.Printf("query %d dsl generated\n", i+1)
 	}
+	elapsed := time.Since(start)
+	fmt.Printf("Time taken to generate all dsls: %s", elapsed)
 	f.Close()
 	fp.Close()
 	fmt.Println("DSL generated\n---------------------------------------------------------------------")

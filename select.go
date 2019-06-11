@@ -110,7 +110,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		}
 		// cadence special handling: add runID as sorting tie breaker
 		if e.cadence {
-			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "asc"}`, TieBreaker)
+			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "%v"}`, TieBreaker, TieBreakerOrder)
 			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
 		}
 		if len(orderBySlice) > 0 {
@@ -453,16 +453,12 @@ func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 }
 
 func (e *ESql) filterOrReplace(target string) (string, error) {
-	if len(e.replaceList) > 0 {
-		if _, exist := e.replaceList[target]; exist && e.replace != nil {
-			target = e.replace(target)
-		}
+	if e.replace != nil {
+		target = e.replace(target)
 	}
-	if len(e.whiteList) > 0 {
-		if _, exist := e.whiteList[target]; exist {
-			err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
-			return "", err
-		}
+	if e.filter != nil && !e.filter(target) {
+		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
+		return "", err
 	}
 	return target, nil
 }

@@ -54,6 +54,7 @@ const (
 	DomainID             = "domainID"
 	WorkflowID           = "workflowID"
 	ExecutionTime        = "ExecutionTime"
+	TieBreakerOrder      = "desc"
 )
 
 func defaultCadenceColNameReplacePolicy(colNameStr string) string {

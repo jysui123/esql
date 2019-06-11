@@ -153,6 +153,7 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 			aggCnt++
 			funcExpr := orderExpr.Expr.(*sqlparser.FuncExpr)
 			aggNameStr := strings.ToLower(funcExpr.Name.String())
+			// ? should we convert funcExpr.Exprs to colname?
 			aggTargetStr := sqlparser.String(funcExpr.Exprs)
 			aggTargetStr = strings.Trim(aggTargetStr, "`")
 			aggTargetStr, err := e.filterOrReplace(aggTargetStr)

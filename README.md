@@ -32,11 +32,12 @@
 - [x] keyword: HAVING
 
 ### M4
-- [x] special handling: ExecutionTime field
+- [x] add lower bound to ExecutionTime field
 - [x] column name filtering and replacing
 - [x] pagination, search after (avoid using magic "size"=1000)
 - [x] run ID as sorting tie breaker
-- [ ] domain ID search
+- [x] domain ID search
+- [ ] test cadence special handlings
 
 ### M5
 - [ ] TBD
@@ -69,10 +70,13 @@ Current Cadence query request processing steps are listed below:
 
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs:
-- `func (*ESql) init([]string, []string, Replace, bool, int, int)`: initialize all parameters
-- `func (*ESql) Convert(string, string, ...interface{}) (string, error)`: convert sql to es dsl
-- `func (*ESql) ConvertPretty(string, string, ...interface{}) (string, error)`: convert sql to es dsl in an indented json format
+Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs. Below shows a simple usage example:
+~~~~
+var e ESql
+e.Init() // initialize
+e.SetFilter(myfilter) // set up filtering policy
+dsl, err := e.ConvertPretty(sql) // convert sql to dsl
+~~~~
 
 
 ## Testing Module
