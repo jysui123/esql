@@ -46,13 +46,14 @@ var fromZeroTimeExpr sqlparser.Expr = &sqlparser.SQLVal{Type: sqlparser.IntVal, 
 
 // default sizes and identifiers used in cadence visibility
 const (
-	DefaultPageSize     = 1000
-	DefaultBucketNumber = 1000
-	TieBreaker          = "runID"
-	RunID               = "runID"
-	DomainID            = "domainID"
-	WorkflowID          = "workflowID"
-	ExecutionTime       = "ExecutionTime"
+	DefaultPageSize      = 1000
+	DefaultBucketNumber  = 1000
+	ESDefaultMaxPageSize = 10000
+	TieBreaker           = "runID"
+	RunID                = "runID"
+	DomainID             = "domainID"
+	WorkflowID           = "workflowID"
+	ExecutionTime        = "ExecutionTime"
 )
 
 func defaultCadenceColNameReplacePolicy(colNameStr string) string {

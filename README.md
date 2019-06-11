@@ -71,8 +71,8 @@ Current Cadence query request processing steps are listed below:
 ## Usage
 Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs:
 - `func (*ESql) init([]string, []string, Replace, bool, int, int)`: initialize all parameters
-- `func (*ESql) Convert(string, ...interface{}) (string, error)`: convert sql to es dsl
-- `func (*ESql) ConvertPretty(string, ...interface{}) (string, error)`: convert sql to es dsl in an indented json format
+- `func (*ESql) Convert(string, string, ...interface{}) (string, error)`: convert sql to es dsl
+- `func (*ESql) ConvertPretty(string, string, ...interface{}) (string, error)`: convert sql to es dsl in an indented json format
 
 
 ## Testing Module

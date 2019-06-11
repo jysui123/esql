@@ -94,12 +94,18 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	if _, exist := dslMap["aggs"]; !exist {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {
-			orderFieldStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
-			// only count colNames not aggregation functions
-			if strings.ContainsAny(orderFieldStr, "()") {
-				continue
+			var colNameStr string
+			if colName, ok := orderExpr.Expr.(*sqlparser.ColName); ok {
+				colNameStr, err = e.convertColName(colName)
+				if err != nil {
+					return "", err
+				}
+			} else {
+				err := fmt.Errorf(`esql: mix order by aggregations and column names`)
+				return "", err
 			}
-			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
+			colNameStr = strings.Trim(colNameStr, "`")
+			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, colNameStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
 		}
 		// cadence special handling: add runID as sorting tie breaker
@@ -439,16 +445,24 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	// here we garuantee colName is of type *ColName
 	colNameStr := sqlparser.String(colName)
+	replacedColNameStr, err := e.filterOrReplace(colNameStr)
+	if err != nil {
+		return "", err
+	}
+	return replacedColNameStr, nil
+}
+
+func (e *ESql) filterOrReplace(target string) (string, error) {
 	if len(e.replaceList) > 0 {
-		if _, exist := e.replaceList[colNameStr]; exist && e.replace != nil {
-			colNameStr = e.replace(colNameStr)
+		if _, exist := e.replaceList[target]; exist && e.replace != nil {
+			target = e.replace(target)
 		}
 	}
 	if len(e.whiteList) > 0 {
-		if _, exist := e.whiteList[colNameStr]; exist {
-			err := fmt.Errorf("esql: cannot select field %v, forbidden", colNameStr)
+		if _, exist := e.whiteList[target]; exist {
+			err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
 			return "", err
 		}
 	}
-	return colNameStr, nil
+	return target, nil
 }

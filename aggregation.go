@@ -146,38 +146,40 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 	aggTagDirSet := make(map[string]string) // tag -> asc / desc
 	aggTagSet := make(map[string]int)       // tag -> offset, for compatiblity checking
 
+	aggCnt := 0
 	for _, orderExpr := range orderBy {
-		aggStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
-		if strings.ContainsAny(aggStr, "()") {
-			// TODO: do more sanity checks, like prevent order the same target with different directions
-			// eg: COUNT(colA) -> count_colA
-			aggStr = strings.Trim(aggStr, ")")
-			strParts := strings.Split(aggStr, "(")
-			aggNameStr := strings.ToLower(strParts[0])
-			aggTargetStr := strParts[1]
+		switch orderExpr.Expr.(type) {
+		case *sqlparser.FuncExpr:
+			aggCnt++
+			funcExpr := orderExpr.Expr.(*sqlparser.FuncExpr)
+			aggNameStr := strings.ToLower(funcExpr.Name.String())
+			aggTargetStr := sqlparser.String(funcExpr.Exprs)
+			aggTargetStr = strings.Trim(aggTargetStr, "`")
+			aggTargetStr, err := e.filterOrReplace(aggTargetStr)
+			if err != nil {
+				return nil, nil, nil, nil, nil, err
+			}
 			var aggTagStr string
-			aggStr = strings.ToLower(aggStr)
 			switch aggNameStr {
 			case "count":
-				if !strings.Contains(aggStr, "distinct") {
+				// no need to handle count(*) since the size of bucket is always returned
+				if aggTargetStr == "*" {
 					aggTagStr = "_count"
+				} else if funcExpr.Distinct {
+					aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
+					aggNameStr = "cardinality"
 				} else {
-					aggTargetParts := strings.Split(aggTargetStr, " ")
-					if len(aggTargetParts) == 2 && strings.ToLower(aggTargetParts[0]) == "distinct" {
-						aggTagStr = aggNameStr + "_distinct_" + aggTargetParts[1]
-					} else {
-						err := fmt.Errorf(`esql: order by aggregation function %v input err`, aggStr+")")
-						return nil, nil, nil, nil, nil, err
-					}
+					aggTagStr = aggNameStr + "_" + aggTargetStr
+					aggNameStr = "value_count"
 				}
-			case "sum", "min", "max", "avg":
-				if strings.Contains(aggStr, "distinct") {
-					err := fmt.Errorf(`esql: order by aggregation function %v w/ DISTINCT not supported`, aggNameStr)
+			case "avg", "sum", "min", "max":
+				if funcExpr.Distinct {
+					err := fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
 					return nil, nil, nil, nil, nil, err
 				}
 				aggTagStr = aggNameStr + "_" + aggTargetStr
 			default:
-				err := fmt.Errorf(`esql: order by aggregation function %v not supported`, aggNameStr)
+				err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
 				return nil, nil, nil, nil, nil, err
 			}
 			if dir, exist := aggTagDirSet[aggTagStr]; exist {
@@ -193,7 +195,13 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 			aggTargetSlice = append(aggTargetSlice, aggTargetStr)
 			aggTagSlice = append(aggTagSlice, aggTagStr)
 			aggDirSlice = append(aggDirSlice, orderExpr.Direction)
+		default:
 		}
+	}
+
+	if aggCnt > 0 && aggCnt < len(orderBy) {
+		err := fmt.Errorf(`esql: mix order by agg functions and column names`)
+		return nil, nil, nil, nil, nil, err
 	}
 	return aggNameSlice, aggTargetSlice, aggTagSlice, aggDirSlice, aggTagSet, nil
 }
@@ -206,6 +214,10 @@ func (e *ESql) getAggSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []
 		aggNameStr := strings.ToLower(funcExpr.Name.String())
 		aggTargetStr := sqlparser.String(funcExpr.Exprs)
 		aggTargetStr = strings.Trim(aggTargetStr, "`")
+		aggTargetStr, err := e.filterOrReplace(aggTargetStr)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 		var aggTagStr string
 		switch aggNameStr {
 		case "count":

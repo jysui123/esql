@@ -69,6 +69,7 @@ func (e *ESql) init(whiteListArg []string, replaceListArg []string, replaceFuncA
 //     dsl, err := e.ConvertPretty(sql, pageParam1, pageParam2, ...)
 // arguments:
 //     sql: the sql query needs conversion in string format
+//     domainID: used for cadence visibility. for non-cadence usage it is not used
 // 	   pagination: variadic arguments that indicates es search_after for pagination
 func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
 	dsl, err = e.Convert(sql, domainID, pagination)
@@ -91,6 +92,7 @@ func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interfac
 //     dsl, err := e.Convert(sql, pageParam1, pageParam2, ...)
 // arguments:
 //     sql: the sql query needs conversion in string format
+//     domainID: used for cadence visibility. for non-cadence usage it is not used
 //     pagination: variadic arguments that indicates es search_after for pagination
 func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
 	stmt, err := sqlparser.Parse(sql)
