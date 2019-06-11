@@ -8,7 +8,7 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
+func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (dsl string, err error) {
 	var rootParent sqlparser.Expr
 	// a map that contains the main components of a query
 	dslMap := make(map[string]interface{})
@@ -20,15 +20,6 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 			return "", err
 		}
 		dslMap["query"] = dslQuery
-	}
-
-	// handle LIMIT and OFFSET keyword
-	dslMap["size"] = 1000
-	if sel.Limit != nil {
-		if sel.Limit.Offset != nil {
-			dslMap["from"] = sqlparser.String(sel.Limit.Offset)
-		}
-		dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
 	}
 
 	// handle FROM keyword, currently only support 1 target table
@@ -62,6 +53,32 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["_source"] = "false"
 		dslMap["stored_fields"] = `"_none_"`
 		dslMap["size"] = 0
+	} else {
+		// handle LIMIT and OFFSET keyword
+		dslMap["size"] = 1000
+		if sel.Limit != nil {
+			if sel.Limit.Offset != nil {
+				dslMap["from"] = sqlparser.String(sel.Limit.Offset)
+			}
+			dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
+		}
+		// handle pagination
+		var searchAfterSlice []string
+		for _, v := range pagination {
+			switch v.(type) {
+			case int:
+				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`%v`, v))
+			case string:
+				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
+			default:
+				err := fmt.Errorf(`esql: page after param should be of type either int or string`)
+				return "", err
+			}
+		}
+		if len(searchAfterSlice) > 0 {
+			searchAfterStr := strings.Join(searchAfterSlice, ",")
+			dslMap["search_after"] = fmt.Sprintf(`[%v]`, searchAfterStr)
+		}
 	}
 
 	// handle ORDER BY <column name>

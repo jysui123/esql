@@ -32,9 +32,9 @@
 - [x] keyword: HAVING
 
 ### M4
-- [ ] special handling: ExecutionTime field
-- [ ] column name filtering and replacing
-- [ ] pagination, search after (avoid using magic "size"=1000)
+- [x] special handling: ExecutionTime field
+- [x] column name filtering and replacing
+- [x] pagination, search after (avoid using magic "size"=1000)
 - [ ] run ID as sorting tie breaker
 - [ ] domain ID search
 
