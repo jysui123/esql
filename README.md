@@ -35,7 +35,7 @@
 - [x] special handling: ExecutionTime field
 - [x] column name filtering and replacing
 - [x] pagination, search after (avoid using magic "size"=1000)
-- [ ] run ID as sorting tie breaker
+- [x] run ID as sorting tie breaker
 - [ ] domain ID search
 
 ### M5

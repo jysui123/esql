@@ -96,8 +96,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 				dslOrderSlice = append(dslOrderSlice, dslOrder)
 			}
 			dslAggOrder := strings.Join(dslOrderSlice, ",")
-			// TODO: magic size number
-			dslAggOrder = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, dslAggOrder, 1000)
+			dslAggOrder = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, dslAggOrder, e.bucketNumber)
 			dslAggSlice = append(dslAggSlice, dslAggOrder)
 		}
 		if script != "" {
@@ -295,7 +294,6 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 		}
 	}
 	dsl = strings.Join(groupByStrSlice, ",")
-	// TODO: magic size number, use "after" for pagination
-	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, 1000, dsl)
+	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
 	return dsl, colNameSet, nil
 }

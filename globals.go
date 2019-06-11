@@ -47,3 +47,13 @@ var op2PainlessOp = map[string]string{
 // fromZeroTimeExpr ...
 // used for special handling in cadence usage
 var fromZeroTimeExpr sqlparser.Expr = &sqlparser.SQLVal{Type: sqlparser.IntVal, Val: []byte(strconv.Itoa(0))}
+
+// default sizes
+var defaultPageSize = 1000
+var defaultBucketNumber = 1000
+
+var tieBreaker = "runID"
+
+func defaultCadenceColNameReplacePolicy(colNameStr string) string {
+	return "Attr." + colNameStr
+}

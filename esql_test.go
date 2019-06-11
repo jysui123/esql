@@ -24,7 +24,7 @@ var groundTruth = ``
 func TestGenDSL(t *testing.T) {
 	fmt.Println("Start generating DSL ...")
 	var e ESql
-	e.init(nil, nil, false)
+	e.init(nil, nil, nil, false, 0, 0)
 	f, err := os.Open(testCases)
 	if err != nil {
 		t.Error("Fail to open testcase file")

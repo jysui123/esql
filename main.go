@@ -11,7 +11,7 @@ import (
 
 // ConvertPretty will transform sql to elasticsearch dsl, and prettify the output json
 func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string, err error) {
-	dsl, err = e.Convert(sql)
+	dsl, err = e.Convert(sql, pagination)
 	if err != nil {
 		return dsl, err
 	}
@@ -35,7 +35,7 @@ func (e *ESql) Convert(sql string, pagination ...interface{}) (dsl string, err e
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)))
+		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), pagination)
 	default:
 		err = errors.New("esql: Queries other than select not supported")
 	}

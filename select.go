@@ -55,7 +55,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (d
 		dslMap["size"] = 0
 	} else {
 		// handle LIMIT and OFFSET keyword
-		dslMap["size"] = 1000
+		dslMap["size"] = e.pageSize
 		if sel.Limit != nil {
 			if sel.Limit.Offset != nil {
 				dslMap["from"] = sqlparser.String(sel.Limit.Offset)
@@ -93,6 +93,11 @@ func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (d
 			}
 			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
+		}
+		// cadence special: add runID as sorting tie breaker
+		if e.cadence {
+			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "asc"}`, tieBreaker)
+			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
 		}
 		if len(orderBySlice) > 0 {
 			dslMap["sort"] = fmt.Sprintf("[%v]", strings.Join(orderBySlice, ","))
@@ -426,15 +431,14 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	// here we garuantee colName is of type *ColName
 	colNameStr := sqlparser.String(colName)
-	if e.cadence {
-		if e.replace != nil {
-			colNameStr = e.replace(colNameStr)
-		}
-		if e.whiteList != nil {
-			if _, exist := e.whiteList[colNameStr]; exist {
-				err := fmt.Errorf("esql: cadence: cannot select field %v", colNameStr)
-				return "", err
+	if e.whiteList != nil {
+		if code, exist := e.whiteList[colNameStr]; exist {
+			if code == 1 && e.replace != nil {
+				colNameStr = e.replace(colNameStr)
 			}
+		} else {
+			err := fmt.Errorf("esql: cannot select field %v, forbidden", colNameStr)
+			return "", err
 		}
 	}
 	return colNameStr, nil
