@@ -72,10 +72,14 @@ Current Cadence query request processing steps are listed below:
 ## Usage
 Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs. Below shows a simple usage example:
 ~~~~
+sql := "SELECT colA FROM myTable WHERE colB < 10"
 var e ESql
-e.Init() // initialize
-e.SetFilter(myfilter) // set up filtering policy
-dsl, err := e.ConvertPretty(sql) // convert sql to dsl
+e.Init()                                // initialize
+e.SetFilter(myfilter)                   // set up filtering policy
+dsl, err := e.ConvertPretty(sql, "")    // convert sql to dsl
+if err == nil {
+    fmt.Println(dsl)
+}
 ~~~~
 
 
