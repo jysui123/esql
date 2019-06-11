@@ -261,8 +261,12 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				aggFuncExprSlice = append(aggFuncExprSlice, funcExpr)
 				aggNameSlice = append(aggNameSlice, sqlparser.String(funcExpr.Exprs))
 			case *sqlparser.ColName:
-				colName := aliasedExpr.Expr.(*sqlparser.ColName)
-				colNameSlice = append(colNameSlice, strings.Trim(sqlparser.String(colName), "`"))
+				lhs := aliasedExpr.Expr.(*sqlparser.ColName)
+				lhsStr, err := e.convertColName(lhs)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				colNameSlice = append(colNameSlice, strings.Trim(lhsStr, "`"))
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
 				return nil, nil, nil, err

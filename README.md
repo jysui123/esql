@@ -33,10 +33,8 @@
 
 ### M4
 - [ ] special handling: ExecutionTime field
-- [ ] key whitelist filtering
-- [ ] column name filtering
+- [ ] column name filtering and replacing
 - [ ] pagination, search after (avoid using magic "size"=1000)
-- [ ] select regex column names
 - [ ] run ID as sorting tie breaker
 - [ ] domain ID search
 

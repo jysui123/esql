@@ -16,15 +16,15 @@ var testDsls = `dsls.txt`
 var testDslsPretty = `dslsPretty.txt`
 var groundTruth = ``
 
-var whiteList = map[string]interface{}{
-	"business_code":  []int{91111, 94102, 33309},
-	"business_state": []string{"GA", "NH"},
-}
+// var whiteList = map[string]interface{}{
+// 	"business_code":  []int{91111, 94102, 33309},
+// 	"business_state": []string{"GA", "NH"},
+// }
 
 func TestGenDSL(t *testing.T) {
 	fmt.Println("Start generating DSL ...")
 	var e ESql
-	e.init(whiteList, false)
+	e.init(nil, nil, false)
 	f, err := os.Open(testCases)
 	if err != nil {
 		t.Error("Fail to open testcase file")

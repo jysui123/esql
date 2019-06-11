@@ -126,7 +126,10 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 		err := fmt.Errorf("esql: invalid range column name")
 		return "", err
 	}
-	lhsStr := sqlparser.String(lhs)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
 	op := rangeCond.Operator
@@ -136,13 +139,14 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 
 	// special handling for candece query with ExecutionTime field
 	if e.cadence {
-		if _, ok := strconv.Atoi(fromStr); ok != nil {
+		if fromNum, ok := strconv.Atoi(fromStr); ok == nil {
+			if fromNum < 0 {
+				fromInclusive = true
+				fromStr = "0"
+			}
+		} else {
 			err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
 			return "", err
-		}
-		if fromNum, _ := strconv.Atoi(fromStr); fromNum < 0 {
-			fromInclusive = true
-			fromStr = "0"
 		}
 	}
 
@@ -155,7 +159,7 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 		lt = "lt"
 	}
 
-	dsl := fmt.Sprintf(`{"range": {"%v": {"%v": "%v", "%v": "%v"}}}`, gt, lhsStr, lt, fromStr, toStr)
+	dsl := fmt.Sprintf(`{"range": {"%v": {"%v": "%v", "%v": "%v"}}}`, lhsStr, gt, fromStr, lt, toStr)
 	if op == sqlparser.NotBetweenStr {
 		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
 	}
@@ -261,11 +265,14 @@ func (e *ESql) convertOrExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string
 
 func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	isExpr := expr.(*sqlparser.IsExpr)
-	colName, ok := isExpr.Expr.(*sqlparser.ColName)
+	lhs, ok := isExpr.Expr.(*sqlparser.ColName)
 	if !ok {
 		return "", fmt.Errorf("esql: is expression only support colname missing check")
 	}
-	lhsStr := sqlparser.String(colName)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 	dsl := ""
 	op := isExpr.Operator
@@ -291,12 +298,15 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	// extract lhs, and check lhs is a colName
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
 	lhsExpr := comparisonExpr.Left
-	colName, ok := lhsExpr.(*sqlparser.ColName)
+	lhs, ok := lhsExpr.(*sqlparser.ColName)
 	if !ok {
 		return "", fmt.Errorf("esql: invalid comparison expression, lhs must be a column name")
 	}
 
-	lhsStr := sqlparser.String(colName)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 
 	// extract rhs
@@ -314,7 +324,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		op = oppositeOperator[op]
 	}
 
-	// in cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
+	// special handling for cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
 	if e.cadence && lhsStr == ExecutionTimeStr {
 		switch op {
 		case "<":
@@ -324,13 +334,14 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
 			return e.convertBetweenExpr(expr1, parent, true, true, false)
 		case ">", ">=":
-			if _, ok := strconv.Atoi(rhsStr); ok != nil {
+			if rhsNum, ok := strconv.Atoi(rhsStr); ok == nil {
+				if rhsNum < 0 {
+					op = ">="
+					rhsStr = "0"
+				}
+			} else {
 				err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
 				return "", err
-			}
-			if rhsNum, _ := strconv.Atoi(rhsStr); rhsNum < 0 {
-				op = ">="
-				rhsStr = "0"
 			}
 		default:
 		}
@@ -393,4 +404,21 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 		return "", err
 	}
 	return dsl, nil
+}
+
+func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
+	// here we garuantee colName is of type *ColName
+	colNameStr := sqlparser.String(colName)
+	if e.cadence {
+		if e.replace != nil {
+			colNameStr = e.replace(colNameStr)
+		}
+		if e.whiteList != nil {
+			if _, exist := e.whiteList[colNameStr]; exist {
+				err := fmt.Errorf("esql: cadence: cannot select field %v", colNameStr)
+				return "", err
+			}
+		}
+	}
+	return colNameStr, nil
 }
