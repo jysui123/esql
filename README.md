@@ -68,6 +68,10 @@ Current Cadence query request processing steps are listed below:
 **This project is based on [elasticsql](https://github.com/cch123/elasticsql)** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
 
 
+## Usage
+Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs.
+
+
 ## Testing Module
 We are using elasticsearch's SQL translate API as a reference in testing. Testing contains 3 basic steps:
 - using elasticsearch's SQL translate API to translate sql to dsl
@@ -98,6 +102,8 @@ Testing steps:
 |group by multiple columns|"composite" flattened grouping|nested "aggs" field|
 |order by aggregation function|use "bucket_sort" to order by aggregation functions, also do validation check|not supported|
 |HAVING expression|supported, using "bucket_selector" and painless scripting language|not supported|
+|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|NA|
+|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|NA|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|return all document contents|
 |optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|

@@ -71,10 +71,9 @@ func (e *ESql) convertSelect(sel sqlparser.Select, pagination ...interface{}) (d
 			case string:
 				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
 			default:
-				err := fmt.Errorf(`esql: page after param should be of type either int or string`)
-				return "", err
 			}
 		}
+
 		if len(searchAfterSlice) > 0 {
 			searchAfterStr := strings.Join(searchAfterSlice, ",")
 			dslMap["search_after"] = fmt.Sprintf(`[%v]`, searchAfterStr)
@@ -431,12 +430,13 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	// here we garuantee colName is of type *ColName
 	colNameStr := sqlparser.String(colName)
-	if e.whiteList != nil {
-		if code, exist := e.whiteList[colNameStr]; exist {
-			if code == 1 && e.replace != nil {
-				colNameStr = e.replace(colNameStr)
-			}
-		} else {
+	if len(e.replaceList) > 0 {
+		if _, exist := e.replaceList[colNameStr]; exist && e.replace != nil {
+			colNameStr = e.replace(colNameStr)
+		}
+	}
+	if len(e.whiteList) > 0 {
+		if _, exist := e.whiteList[colNameStr]; exist {
 			err := fmt.Errorf("esql: cannot select field %v, forbidden", colNameStr)
 			return "", err
 		}
