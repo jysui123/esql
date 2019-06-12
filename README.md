@@ -1,59 +1,7 @@
 # ESQL: Translate SQL to Elasticsearch DSL
 
-## Milestones
-
-### M1
-- [x] comparison operators: =, !=, <, >, <=, >=
-- [x] boolean operators: AND, OR, NOT
-- [x] parenthesis: ()
-- [x] auto testing
-- [x] setup git branch for pull request and code review
-- [x] keyword: LIMIT, SIZE
-- [x] depedencies management and golint checking
-
-### M2
-- [x] keyword: IS NULL, IS NOT NULL (missing check)
-- [x] keyword: BETWEEN
-- [x] keyword: IN, NOT IN
-- [x] keyword: LIKE, NOT LIKE
-
-### M3
-- [x] aggregations
-    - [x] COUNT
-    - [x] AVG, SUM
-    - [x] MIN, MAX
-    - [x] COUNT DISTINCT
-- [x] keyword: GROUP BY (column name)
-- [x] resolve conflict between aggregations and GROUP BY
-- [x] keyword: ORDER BY
-    - [x] ORDER BY column name
-    - [x] ORDER BY aggregation function
-- [x] select specific columns
-- [x] keyword: HAVING
-
-### M4
-- [x] add lower bound to ExecutionTime field
-- [x] column name filtering and replacing
-- [x] pagination, search after (avoid using magic "size"=1000)
-- [x] run ID as sorting tie breaker
-- [x] domain ID search
-- [ ] test cadence special handlings
-
-### M5
-- [ ] TBD
-
-### Misc
-- [ ] optimization: docvalue_fields, term&keyword
-- [ ] documentation
-- [ ] test cases for unsupported and invalid queries
-- [ ] ES functions (not in sql standard)
-    - [ ] ES aggregation functions
-    - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
-- [ ] ES pipeline aggregations
-
-
 ## Motivation
-Currently we are using [elasticsql](https://github.com/cch123/elasticsql). However it only support up to ES V2.x while [Cadence](https://github.com/uber/cadence) is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
+Currently [Cadence](https://github.com/uber/cadence) is using [elasticsql](https://github.com/cch123/elasticsql) to translate sql query. However it only support up to ES V2.x while Cadence is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
 
 Current Cadence query request processing steps are listed below:
 - generate SQL from query
@@ -66,7 +14,20 @@ Current Cadence query request processing steps are listed below:
 - modify sorting field (add workflow id as sorting tie breaker)
 - setup search after for pagination
 
-**This project is based on [elasticsql](https://github.com/cch123/elasticsql)** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
+**This project is based on elasticsql** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
+
+
+## Supported features
+- =, !=, <, >, <=, >=, <>, ()
+- ANT, OR, NOT
+- LIKE, IN, REGEX, IS NULL, BETWEEN
+- LIMIT, SIZE, DISTINCT
+- COUNT, COUNT(DISTINCT)
+- AVG, MAX, MIN, SUM
+- GROUP BY, ORDER BY
+- HAVING
+- Column name selection filtering and replacing
+- special handling for cadence visibility
 
 
 ## Usage
