@@ -16,4 +16,4 @@ sh ${elastic}bin/elasticsearch &
 sleep 30
 sh ${kibana}bin/kibana &
 sleep 15
-python gen_test_data.py -dcmi
+python gen_test_data.py -dcmi 2

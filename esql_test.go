@@ -114,8 +114,8 @@ func TestGenCadenceDSL(t *testing.T) {
 	e.SetCadence(true)
 	e.SetPageSize(100)
 	e.SetBucketNum(100)
-	e.SetFilter(myfilter)
-	e.SetReplace(defaultCadenceColNameReplacePolicy)
+	//e.SetFilter(myfilter)
+	//e.SetReplace(defaultCadenceColNameReplacePolicy)
 
 	f, err := os.Open(testCasesCadence)
 	if err != nil {

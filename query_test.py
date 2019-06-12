@@ -4,8 +4,8 @@ import unittest
 
 class TestGeneratedDSL(unittest.TestCase):
     urlSQL = 'http://localhost:9200/_xpack/sql/translate'
-    url = 'http://localhost:9200/test/_search'
-    urlFull = 'http://localhost:9200/test/_search?size=1000'
+    url = 'http://localhost:9200/test0/_search'
+    urlFull = 'http://localhost:9200/test0/_search?size=1000'
     headers = {"Content-type": "application/json"}
     sqlFileName = 'sqls.txt'
     dslFileName = 'dsls.txt'

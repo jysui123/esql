@@ -8,6 +8,11 @@ import (
 )
 
 func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
+	if len(sel.GroupBy) == 0 && sel.Having != nil {
+		err = fmt.Errorf(`esql: HAVING used without GROUP BY`)
+		return "", err
+	}
+
 	colNameSetGroupBy := make(map[string]int)
 	var dslGroupBy string
 	if len(sel.GroupBy) != 0 {
@@ -21,11 +26,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 		return "", err
 	}
 	// verify don't select col name out side agg group name
-	if err = e.checkAggCompatibility(colNameSlice, colNameSetGroupBy, aggNameSlice); err != nil {
-		return "", err
-	}
-	if len(sel.GroupBy) == 0 && sel.Having != nil {
-		err = fmt.Errorf(`esql: HAVING used without GROUP BY`)
+	if err = e.checkSelGroupByCompatibility(colNameSlice, colNameSetGroupBy, aggNameSlice); err != nil {
 		return "", err
 	}
 
@@ -40,7 +41,8 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	//
 	// however, for each source, there can be dups, we don't want to introduce duplicate tags
 	// aggTagSet, aggTagOrderBySet, aggTagHavingSet are used to resolve dups, each of them is a map[string]int
-	// which maps the tag string to an offset integer
+	// which maps the tag string to an offset integer which indicates the position of this tag in
+	// the corresponding aggxxxSlice
 	//
 	// aggNamexxxSlice stores agg functions names, aggTargetxxxSlice stores colNames, aggTagxxxSlice stores the tags
 	// they are used to generate final json query
@@ -125,7 +127,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	return dsl, nil
 }
 
-func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[string]int, aggNameSlice []string) (err error) {
+func (e *ESql) checkSelGroupByCompatibility(colNameSlice []string, colNameGroupBy map[string]int, aggNameSlice []string) error {
 	for _, aggName := range aggNameSlice {
 		colNameGroupBy[aggName] = 1
 	}
@@ -134,7 +136,7 @@ func (e *ESql) checkAggCompatibility(colNameSlice []string, colNameGroupBy map[s
 	}
 	for _, colNameStr := range colNameSlice {
 		if _, exist := colNameGroupBy[colNameStr]; !exist {
-			err = fmt.Errorf(`esql: select column %v that not in group by`, colNameStr)
+			err := fmt.Errorf(`esql: select column %v that not in group by`, colNameStr)
 			return err
 		}
 	}

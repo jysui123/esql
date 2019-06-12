@@ -5,7 +5,7 @@ import json
 import random
 import sys
 
-url = 'http://localhost:9200/test'
+url = 'http://localhost:9200/'
 indexingRoute = '/_mapping/_doc'
 postDataRoute = '/_doc'
 
@@ -56,7 +56,7 @@ def genPayload(fields, missingPercent=20):
             payload[k] = v
     return payload
 
-def insertData(nRows, missingPercent):
+def insertData(tableName, nRows, missingPercent):
     for i in range(nRows):
         payload = {}
         payload['colA'] = genRandStr()
@@ -69,59 +69,64 @@ def insertData(nRows, missingPercent):
         payload['runID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
 
         payload = genPayload(payload, missingPercent)
-        resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
+        resp = requests.post(url+tableName + postDataRoute, data=json.dumps(payload), headers=headers)
         if resp == None or resp.status_code != 201:
             print("cannot insert data: {}: {}\n".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
             print(i, json.dumps(payload))
             exit(1)
     print("successfully insert {} documents (rows)".format(nRows))
 
-def putMapping():
-    resp = requests.put(url + indexingRoute, data=json.dumps(schema), headers=headers)
+def putMapping(tableName):
+    resp = requests.put(url+tableName + indexingRoute, data=json.dumps(schema), headers=headers)
     if resp == None or resp.status_code != 200:
         print("cannot put mapping: {}: {}".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
         exit(1)
     print("successfully put mapping")
 
-def deleteIndex():
-    resp = requests.delete(url)
+def deleteIndex(tableName):
+    resp = requests.delete(url+tableName)
     if resp == None or resp.status_code not in [200, 202, 204]:
         print("cannot delete index")
-        exit(1)
+        # exit(1)
     print("successfully delete index")
 
-def createIndex():
-    resp = requests.put(url)
+def createIndex(tableName):
+    resp = requests.put(url+tableName)
     if resp == None or resp.status_code != 200:
         print("cannot create index")
     print("successfully create index")
 
 nRows = 200
 missingPercent = 20
-if len(sys.argv) > 4:
+tableNum = 1
+if len(sys.argv) > 5:
     print ("too many arguments")
     exit(1)
 if len(sys.argv) > 2:
-    nRows = int(sys.argv[2])
+    tableNum = int(sys.argv[2])
 if len(sys.argv) > 3:
-    missingPercent = int(sys.argv[3])
-for i in range(len(sys.argv[1])):
-    if i == 0:
-        if sys.argv[1][i] != '-':
-            print("invalid argument")
-            exit(1)
-    else:
-        if sys.argv[1][i] == 'i':
-            insertData(nRows, missingPercent)
-        elif sys.argv[1][i] == 'd':
-            deleteIndex()
-        elif sys.argv[1][i] == 'm':
-            putMapping()
-        elif sys.argv[1][i] == 'c':
-            createIndex()
+    nRows = int(sys.argv[3])
+if len(sys.argv) > 4:
+    missingPercent = int(sys.argv[4])
+for table in range(tableNum):
+    tableName = 'test' + str(table)
+    for i in range(len(sys.argv[1])):
+        if i == 0:
+            if sys.argv[1][i] != '-':
+                print("invalid argument")
+                exit(1)
         else:
-            print("invalid argument")
-            exit(1)
+            if sys.argv[1][i] == 'i':
+                insertData(tableName, nRows, missingPercent)
+            elif sys.argv[1][i] == 'd':
+                deleteIndex(tableName)
+            elif sys.argv[1][i] == 'm':
+                putMapping(tableName)
+            elif sys.argv[1][i] == 'c':
+                createIndex(tableName)
+            else:
+                print("invalid argument")
+                exit(1)
 
 
 

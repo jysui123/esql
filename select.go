@@ -9,6 +9,11 @@ import (
 )
 
 func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination ...interface{}) (dsl string, err error) {
+	if sel.Distinct != "" {
+		err := fmt.Errorf(`esql: SELECT DISTINCT not supported. use GROUP BY instead`)
+		return "", err
+	}
+
 	var rootParent sqlparser.Expr
 	// a map that contains the main components of a query
 	dslMap := make(map[string]interface{})
@@ -196,7 +201,7 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 
 	dsl := fmt.Sprintf(`{"range": {"%v": {"%v": "%v", "%v": "%v"}}}`, lhsStr, gt, fromStr, lt, toStr)
 	if op == sqlparser.NotBetweenStr {
-		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": [%v]}}`, dsl)
 	}
 	return dsl, nil
 }
@@ -268,7 +273,7 @@ func (e *ESql) convertAndExpr(expr sqlparser.Expr, parent sqlparser.Expr) (strin
 	if _, ok := parent.(*sqlparser.AndExpr); ok {
 		return dsl, nil
 	}
-	return fmt.Sprintf(`{"bool" : {"filter" : [%v]}}`, dsl), nil
+	return fmt.Sprintf(`{"bool": {"filter": [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertOrExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
@@ -295,7 +300,7 @@ func (e *ESql) convertOrExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string
 	if _, ok := parent.(*sqlparser.OrExpr); ok {
 		return dsl, nil
 	}
-	return fmt.Sprintf(`{"bool" : {"should" : [%v]}}`, dsl), nil
+	return fmt.Sprintf(`{"bool": {"should": [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
@@ -386,39 +391,39 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	var dsl string
 	switch op {
 	case "=":
-		dsl = fmt.Sprintf(`{"term" : {"%v": "%v"}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"term": {"%v": "%v"}}`, lhsStr, rhsStr)
 	case "<":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"lt" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"lt": "%v"}}}`, lhsStr, rhsStr)
 	case "<=":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"lte" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"lte": "%v"}}}`, lhsStr, rhsStr)
 	case ">":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gt" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"gt": "%v"}}}`, lhsStr, rhsStr)
 	case ">=":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gte" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"gte": "%v"}}}`, lhsStr, rhsStr)
 	case "<>", "!=":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"term" : {"%v": "%v"}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"term": {"%v": "%v"}}}}`, lhsStr, rhsStr)
 	case "in":
 		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
 		rhsStr = strings.Trim(rhsStr, "(")
 		rhsStr = strings.Trim(rhsStr, ")")
-		dsl = fmt.Sprintf(`{"terms" : {"%v" : [%v]}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"terms": {"%v": [%v]}}`, lhsStr, rhsStr)
 	case "not in":
 		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
 		rhsStr = strings.Trim(rhsStr, "(")
 		rhsStr = strings.Trim(rhsStr, ")")
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"terms" : {"%v" : [%v]}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"terms": {"%v": [%v]}}}}`, lhsStr, rhsStr)
 	case "like":
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
 		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
-		dsl = fmt.Sprintf(`{"wildcard" : {"%v" : {"wildcard": "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"wildcard": {"%v": {"wildcard": "%v"}}}`, lhsStr, rhsStr)
 	case "not like":
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
 		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"wildcard" : {"%v" : {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"wildcard": {"%v": {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
 	case "regexp":
-		dsl = fmt.Sprintf(`{"regexp" : {"%v" : "%v"}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"regexp": {"%v": "%v"}}`, lhsStr, rhsStr)
 	case "not regexp":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"regexp" : {"%v" : "%v"}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"regexp": {"%v": "%v"}}}}`, lhsStr, rhsStr)
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err
@@ -452,12 +457,12 @@ func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 }
 
 func (e *ESql) filterOrReplace(target string) (string, error) {
-	if e.replace != nil {
-		target = e.replace(target)
-	}
 	if e.filter != nil && !e.filter(target) {
 		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
 		return "", err
+	}
+	if e.replace != nil {
+		target = e.replace(target)
 	}
 	return target, nil
 }
