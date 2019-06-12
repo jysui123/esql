@@ -18,6 +18,7 @@
 
 # Test cases
 !sqls.txt
+!sqlsCadence.txt
 
 # dependencies
 vendor

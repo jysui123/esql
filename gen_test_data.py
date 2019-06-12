@@ -19,7 +19,9 @@ schema = {
         "colC": {"type": "keyword"},
         "colD": {"type": "long"},
         "colE": {"type": "double"},
-        "date": {"type": "date"}
+        "ExecutionTime": {"type": "long"},
+        "DomainID": {"type": "keyword"},
+        "runID": {"type": "keyword"}
     }
 }
 
@@ -56,14 +58,17 @@ def genPayload(fields, missingPercent=20):
 
 def insertData(nRows, missingPercent):
     for i in range(nRows):
-        colA = genRandStr()
-        colB = genRandStr("ab", 2)
-        colC = colA + " " + genRandStr() + " " + genRandStr()
-        colD = random.randint(0, 20)
-        colE = random.uniform(0, 20)
-        date = genDate('s')
+        payload = {}
+        payload['colA'] = genRandStr()
+        payload['colB'] = genRandStr("ab", 2)
+        payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
+        payload['colD'] = random.randint(0, 20)
+        payload['colE'] = random.uniform(0, 20)
+        payload['exeTime'] = random.randint(-100, 200)
+        payload['domainID'] = genRandStr("123", 1)
+        payload['runID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
 
-        payload = genPayload({"colA": colA, "colB": colB, "colC": colC, "colD": colD, "colE": colE, "date": date}, missingPercent)
+        payload = genPayload(payload, missingPercent)
         resp = requests.post(url + postDataRoute, data=json.dumps(payload), headers=headers)
         if resp == None or resp.status_code != 201:
             print("cannot insert data: {}: {}\n".format(resp.status_code, requests.status_codes._codes[resp.status_code]))

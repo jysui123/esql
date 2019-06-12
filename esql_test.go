@@ -7,14 +7,18 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
 
-var tableName = `inspections`
+var tableName = `test`
 var testCases = `sqls.txt`
+var testCasesCadence = `sqlsCadence.txt`
 var testDsls = `dsls.txt`
+var testDslsCadence = `dslsCadence.txt`
 var testDslsPretty = `dslsPretty.txt`
+var testDslsPrettyCadence = `dslsPrettyCadence.txt`
 var groundTruth = ``
 
 // var whiteList = map[string]interface{}{
@@ -23,7 +27,7 @@ var groundTruth = ``
 // }
 
 func TestGenDSL(t *testing.T) {
-	fmt.Println("Start generating DSL ...")
+	fmt.Println("Test Generating DSL ...")
 	var e ESql
 	e.Init()
 	f, err := os.Open(testCases)
@@ -97,4 +101,58 @@ func TestGenDSL(t *testing.T) {
 	f.Close()
 	fp.Close()
 	fmt.Println("DSL generated\n---------------------------------------------------------------------")
+}
+
+func myfilter(s string) bool {
+	sz := len(s)
+	return sz == 4 && (s[sz-1] == 'A' || s[sz-1] == 'C' || s[sz-1] == 'B' || s[sz-1] == 'D' || s[sz-1] == 'E')
+}
+
+func myreplace(s string) string {
+	if strings.HasPrefix(s, "col") {
+		return "Attr." + s
+	}
+	return s
+}
+
+func TestGenCadenceDSL(t *testing.T) {
+	fmt.Println("Test Generating DSL for Cadence...")
+	var e ESql
+	e.Init()
+	e.SetCadence(true)
+	e.SetPageSize(100)
+	e.SetBucketNum(100)
+	e.SetFilter(myfilter)
+	e.SetReplace(myreplace)
+
+	f, err := os.Open(testCasesCadence)
+	if err != nil {
+		t.Error("Fail to open testcase file")
+	}
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
+	var sqls []string
+	for scanner.Scan() {
+		sqls = append(sqls, scanner.Text())
+	}
+	f.Close()
+
+	fp, err := os.Create(testDslsPrettyCadence)
+	if err != nil {
+		t.Error("Fail to create dsl file")
+	}
+	start := time.Now()
+	for i, sql := range sqls {
+		dslPretty, err := e.ConvertPretty(sql, "1", "1", 123)
+		if err != nil {
+			t.Error(err)
+		}
+		fp.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
+		fp.WriteString(dslPretty)
+		fmt.Printf("query %d dsl generated\n", i+1)
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("Time taken to generate all dsls: %s", elapsed)
+	fp.Close()
+	fmt.Println("DSL Cadence generated\n---------------------------------------------------------------------")
 }

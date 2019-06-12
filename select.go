@@ -63,7 +63,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		dslMap["stored_fields"] = `"_none_"`
 		dslMap["size"] = 0
 	} else {
-		// handle LIMIT and OFFSET keyword
+		// handle LIMIT and OFFSET keyword, these 2 keywords only works in non-aggregation query
 		dslMap["size"] = e.pageSize
 		if sel.Limit != nil {
 			if sel.Limit.Offset != nil {
@@ -77,9 +77,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 			switch v.(type) {
 			case int:
 				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`%v`, v))
-			case string:
-				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
 			default:
+				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
 			}
 		}
 
@@ -456,7 +455,7 @@ func (e *ESql) filterOrReplace(target string) (string, error) {
 	if e.replace != nil {
 		target = e.replace(target)
 	}
-	if e.filter != nil && e.filter(target) {
+	if e.filter != nil && !e.filter(target) {
 		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
 		return "", err
 	}

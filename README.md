@@ -34,8 +34,9 @@ Current Cadence query request processing steps are listed below:
 Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs. Below shows a simple usage example:
 ~~~~
 sql := "SELECT colA FROM myTable WHERE colB < 10"
-func myfilter(colName string) bool {    // custom filter that prevent selection of column config
-    return colName == "config"
+// custom filter that only allows user to select columns start with "col"
+func myfilter(colName string) bool {
+    return strings.HasPrefix(colName, "col")
 }
 var e ESql
 e.Init()                                // initialize

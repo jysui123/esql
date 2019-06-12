@@ -14,6 +14,7 @@ type Replace func(string) string
 
 // Filter ...
 // esql use filter function to prevent user to select certain columns
+// only accept column names that filter(colName) == true
 type Filter func(string) bool
 
 // ESql ...
@@ -70,7 +71,7 @@ func (e *ESql) SetBucketNum(bucketNumArg int) {
 //     domainID: used for cadence visibility. for non-cadence usage just pass in empty string
 // 	   pagination: variadic arguments that indicates es search_after for pagination
 func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
-	dsl, err = e.Convert(sql, domainID, pagination)
+	dsl, err = e.Convert(sql, domainID, pagination...)
 	if err != nil {
 		return dsl, err
 	}
@@ -101,7 +102,7 @@ func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination)
+		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
 	default:
 		err = fmt.Errorf(`esql: Queries other than select not supported`)
 	}
