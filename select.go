@@ -23,7 +23,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	}
 	// cadence special handling: add domain ID query
 	if e.cadence {
-		domainIDQuery := fmt.Sprintf(`{"match_phrase": {"%v": {"query": "%v"}}}`, DomainID, domainID)
+		domainIDQuery := fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
 		if sel.Where == nil {
 			dslMap["query"] = domainIDQuery
 		} else {
@@ -369,7 +369,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
 			return e.convertBetweenExpr(expr1, parent, true, true, false)
 		case ">", ">=":
-			if rhsNum, ok := strconv.Atoi(rhsStr); ok == nil {
+			if rhsNum, err := strconv.Atoi(rhsStr); err == nil {
 				if rhsNum < 0 {
 					op = ">="
 					rhsStr = "0"
@@ -386,7 +386,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	var dsl string
 	switch op {
 	case "=":
-		dsl = fmt.Sprintf(`{"match_phrase" : {"%v" : {"query" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"term" : {"%v": "%v"}}`, lhsStr, rhsStr)
 	case "<":
 		dsl = fmt.Sprintf(`{"range" : {"%v" : {"lt" : "%v"}}}`, lhsStr, rhsStr)
 	case "<=":
@@ -396,7 +396,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	case ">=":
 		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gte" : "%v"}}}`, lhsStr, rhsStr)
 	case "<>", "!=":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"term" : {"%v": "%v"}}}}`, lhsStr, rhsStr)
 	case "in":
 		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
 		rhsStr = strings.Trim(rhsStr, "(")

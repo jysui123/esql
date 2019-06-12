@@ -6,7 +6,6 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-// oppositeOperator ...
 // used for invert operator when NOT is specified
 var oppositeOperator = map[string]string{
 	"=":                     "!=",
@@ -28,7 +27,6 @@ var oppositeOperator = map[string]string{
 	sqlparser.NotBetweenStr: sqlparser.BetweenStr,
 }
 
-// op2PainlessOp ...
 // used for convert SQL operator to painless operator in HAVING expression
 var op2PainlessOp = map[string]string{
 	"=":  "==",
@@ -40,7 +38,6 @@ var op2PainlessOp = map[string]string{
 	"<>": "!==",
 }
 
-// fromZeroTimeExpr ...
 // used for special handling in cadence usage
 var fromZeroTimeExpr sqlparser.Expr = &sqlparser.SQLVal{Type: sqlparser.IntVal, Val: []byte(strconv.Itoa(0))}
 

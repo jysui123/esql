@@ -7,7 +7,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
@@ -108,13 +107,6 @@ func myfilter(s string) bool {
 	return sz == 4 && (s[sz-1] == 'A' || s[sz-1] == 'C' || s[sz-1] == 'B' || s[sz-1] == 'D' || s[sz-1] == 'E')
 }
 
-func myreplace(s string) string {
-	if strings.HasPrefix(s, "col") {
-		return "Attr." + s
-	}
-	return s
-}
-
 func TestGenCadenceDSL(t *testing.T) {
 	fmt.Println("Test Generating DSL for Cadence...")
 	var e ESql
@@ -123,7 +115,7 @@ func TestGenCadenceDSL(t *testing.T) {
 	e.SetPageSize(100)
 	e.SetBucketNum(100)
 	e.SetFilter(myfilter)
-	e.SetReplace(myreplace)
+	e.SetReplace(defaultCadenceColNameReplacePolicy)
 
 	f, err := os.Open(testCasesCadence)
 	if err != nil {
