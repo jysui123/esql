@@ -56,7 +56,8 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
-- `LIKE` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+- `LIKE`, `REGEX` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+- Most aggregations are not thoroughly tested
 
 Testing steps:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
@@ -65,7 +66,7 @@ Testing steps:
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
 - run `./test_all.sh` to run all the test cases
-- generated dsls are stored in `dsls.txt` and `dslsPretty.txt` for reference
+- generated dsls are stored in `dslsPretty.txt` for reference
 
 
 ## esql vs elasticsql

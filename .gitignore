@@ -22,3 +22,6 @@
 
 # dependencies
 vendor
+
+# others
+query_test.py
