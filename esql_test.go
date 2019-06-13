@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -41,11 +42,52 @@ type TestDoc struct {
 	RunID         string  `json:"runID,omitempty"`
 }
 
-func compareResp(i int, respES *elastic.SearchResult, resp *elastic.SearchResult) error {
-	if respES.Hits.TotalHits != resp.Hits.TotalHits {
-		err := fmt.Errorf(`esql test: %vth query get %v documents, but %v expected`, i+1, resp.Hits.TotalHits, respES.Hits.TotalHits)
+func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) error {
+	var groupES, group map[string]interface{}
+	if _, exist := respES.Aggregations["groupby"]; !exist {
+		fmt.Printf("\tagg without group by, not covered in test module\n")
+		return nil
+	}
+	err := json.Unmarshal(*respES.Aggregations["groupby"], &groupES)
+	if err != nil {
 		return err
 	}
+	err = json.Unmarshal(*resp.Aggregations["groupby"], &group)
+	if err != nil {
+		return err
+	}
+	bucketCounts := make(map[int]int)
+	for _, bucket := range groupES["buckets"].([]interface{}) {
+		if b, ok := bucket.(map[string]interface{}); ok {
+			bucketCounts[int(b["doc_count"].(float64))]++
+		} else {
+			err = fmt.Errorf("parsing json error")
+			return err
+		}
+	}
+	for _, bucket := range group["buckets"].([]interface{}) {
+		if b, ok := bucket.(map[string]interface{}); ok {
+			bucketCounts[int(b["doc_count"].(float64))]--
+		} else {
+			err = fmt.Errorf("parsing json error")
+			return err
+		}
+	}
+	for _, v := range bucketCounts {
+		if v != 0 {
+			err = fmt.Errorf("bucket size not match")
+			return err
+		}
+	}
+	return nil
+}
+
+func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error {
+	if respES.Hits.TotalHits != resp.Hits.TotalHits {
+		err := fmt.Errorf(`get %v documents, but %v expected`, resp.Hits.TotalHits, respES.Hits.TotalHits)
+		return err
+	}
+	fmt.Printf("\tget %v documents, document number matches\n", respES.Hits.TotalHits)
 
 	docIDES := make(map[string]int)
 	if respES.Hits.TotalHits > 0 {
@@ -58,14 +100,14 @@ func compareResp(i int, respES *elastic.SearchResult, resp *elastic.SearchResult
 		}
 		for _, hit := range resp.Hits.Hits {
 			if _, exist := docIDES[hit.Id]; !exist {
-				err := fmt.Errorf(`esql test: %vth query result not match`, i+1)
+				err := fmt.Errorf(`document id not match`)
 				return err
 			}
 			docIDES[hit.Id] = 1
 		}
 		for _, v := range docIDES {
 			if v == 0 {
-				err := fmt.Errorf(`esql test: %vth query result not match`, i+1)
+				err := fmt.Errorf(`document id not match`)
 				return err
 			}
 		}
@@ -122,7 +164,6 @@ func TestSQL(t *testing.T) {
 		if err != nil {
 			t.Errorf(`esql test: %vth sql translate query failed to read body: %v`, i+1, err)
 		}
-		sqlDsl := string(sqlRespBody)
 
 		// use esql to translate sql to dsl
 		dsl, err := e.Convert(sql, "0")
@@ -158,24 +199,27 @@ func TestSQL(t *testing.T) {
 		if skip {
 			continue
 		}
-		if strings.Contains(dsl, "aggs") {
-			fmt.Printf("\tquery contains aggregations, not covered in test module\n")
+
+		sqlDsl := string(sqlRespBody)
+		respES, err := client.Search(index).Source(sqlDsl).Do(ctx)
+		if err != nil || respES.Error != nil {
+			fmt.Printf("\tquery not covered in test module\n")
 			continue
 		}
 
-		// query with es translated dsl
-		respES, err := client.Search(index).Source(sqlDsl).Do(ctx)
-		if err != nil {
-			t.Errorf(`esql test: %vth ES SQL DSL query fail: %v`, i+1, err)
-		}
-		if respES.Error != nil {
-			t.Errorf(`esql test: %vth ES SQL DSL query fail with error: %v`, i+1, respES.Error)
-		}
-
 		// compare query results
-		err = compareResp(i, respES, resp)
+		if strings.Contains(dsl, "aggs") {
+			if strings.Contains(dsl, "groupby") {
+				err = compareRespGroup(respES, resp)
+			} else {
+				fmt.Printf("\tquery contains aggregations without group by, not covered in test module\n")
+				continue
+			}
+		} else {
+			err = compareResp(respES, resp)
+		}
 		if err != nil {
-			t.Errorf(`esql test: %vth query results not match`, i+1)
+			t.Errorf(`esql test: %vth query results not match, %v`, i+1, err)
 		} else {
 			fmt.Printf("\tpassed\n")
 		}
