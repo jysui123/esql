@@ -64,8 +64,8 @@ def insertData(tableName, nRows, missingPercent):
         payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
         payload['colD'] = random.randint(0, 20)
         payload['colE'] = random.uniform(0, 20)
-        payload['exeTime'] = random.randint(-100, 200)
-        payload['domainID'] = genRandStr("123", 1)
+        payload['ExecutionTime'] = random.randint(-100, 200)
+        payload['DomainID'] = genRandStr("123", 1)
         payload['runID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
 
         payload = genPayload(payload, missingPercent)

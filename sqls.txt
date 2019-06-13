@@ -65,6 +65,7 @@ SELECT COUNT(DISTINCT colE) FROM test0 GROUP BY colB, colA
 SELECT MAX(colD), AVG(colE), COUNT(colA) FROM test0 GROUP BY colB, colA
 SELECT MAX(colD), AVG(colE), COUNT(colA) FROM test0 WHERE ExecutionTime IS NOT NULL GROUP BY colB, colA
 SELECT MAX(colD), AVG(colE), MIN(colD) FROM test0 WHERE ExecutionTime IS NOT NULL AND NOT colD < 2 GROUP BY colB, colA
+SELECT MAX(colD), AVG(colE), MIN(colD) FROM test0 WHERE colE > 1 GROUP BY colB, colA
 SELECT AVG(colE) FROM test0 GROUP BY colB ORDER BY AVG(colE)
 SELECT AVG(colE) FROM test0 GROUP BY colB ORDER BY AVG(colE) DESC
 SELECT AVG(colE) FROM test0 GROUP BY colB ORDER BY AVG(colE) ASC

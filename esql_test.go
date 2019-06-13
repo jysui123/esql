@@ -29,7 +29,7 @@ var urlES = "http://localhost:9200"
 var url = "http://localhost:9200/test0/_search"
 var urlSQL = "http://localhost:9200/_xpack/sql/translate"
 var index = "test0"
-var notTestedKeywords = []string{"HAVING", "LIMIT", "LIKE", "REGEX"}
+var notTestedKeywords = []string{"LIMIT", "LIKE", "REGEX"}
 
 type TestDoc struct {
 	ColA          string  `json:"colA,omitempty"`
@@ -57,8 +57,10 @@ func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) 
 		return err
 	}
 	bucketCounts := make(map[int]int)
+	buckNum := 0
 	for _, bucket := range groupES["buckets"].([]interface{}) {
 		if b, ok := bucket.(map[string]interface{}); ok {
+			buckNum++
 			bucketCounts[int(b["doc_count"].(float64))]++
 		} else {
 			err = fmt.Errorf("parsing json error")
@@ -79,6 +81,7 @@ func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) 
 			return err
 		}
 	}
+	fmt.Printf("\tquery return %v buckets\n", buckNum)
 	return nil
 }
 
@@ -112,7 +115,6 @@ func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -218,6 +220,7 @@ func TestSQL(t *testing.T) {
 		} else {
 			err = compareResp(respES, resp)
 		}
+
 		if err != nil {
 			t.Errorf(`esql test: %vth query results not match, %v`, i+1, err)
 		} else {
