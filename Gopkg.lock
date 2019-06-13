@@ -3,6 +3,39 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:8a82e4b519fb94b83923e0a6fae6aced276c887781b94b6a00c90b3dad240ba1"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "UT"
+  revision = "1ea4449da9834f4d333f1cc461c374aea217d249"
+
+[[projects]]
+  digest = "1:e948f5c85d49bbdb16facb10ed4c7089b5b5947a5a111f0aa1454aca84a08e74"
+  name = "github.com/olivere/elastic"
+  packages = [
+    ".",
+    "config",
+    "uritemplates",
+  ]
+  pruneopts = "UT"
+  revision = "9a5942842e80bd3c67c6bf9385a32a6c29eba0e4"
+  version = "v6.2.19"
+
+[[projects]]
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
+  branch = "master"
   digest = "1:c364e1046df58e7c1731edd337145461011d129bbb876932d9e5bbf105d07888"
   name = "github.com/xwb1989/sqlparser"
   packages = [
@@ -18,6 +51,9 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/xwb1989/sqlparser"]
+  input-imports = [
+    "github.com/olivere/elastic",
+    "github.com/xwb1989/sqlparser",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

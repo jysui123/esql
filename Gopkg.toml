@@ -26,6 +26,10 @@
 
 
 [[constraint]]
+  name = "github.com/olivere/elastic"
+  version = "6.2.19"
+
+[[constraint]]
   branch = "master"
   name = "github.com/xwb1989/sqlparser"
 
