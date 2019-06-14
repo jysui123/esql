@@ -61,11 +61,11 @@ There are some specific features not covered in testing yet:
 
 Testing steps:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
-- run `chmod u+x start_service.sh test_all.sh`
-- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server
+- run `chmod u+x start_service.sh test.sh`
+- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server (by default, elasticsearch listens port 9200, kibana listens port 5600)
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
-- run `./test_all.sh` to run all the test cases
+- run `./test.sh` to run all the test cases
 - generated dsls are stored in `dslsPretty.txt` for reference
 
 

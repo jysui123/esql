@@ -95,21 +95,17 @@ func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error
 	docIDES := make(map[string]int)
 	if respES.Hits.TotalHits > 0 {
 		for _, hit := range respES.Hits.Hits {
-			docIDES[hit.Id] = 0
+			docIDES[hit.Id] = -1
 		}
 		// if orderby is specified, es sql dsl won't return document id
 		if int64(len(docIDES)) < respES.Hits.TotalHits {
 			return nil
 		}
 		for _, hit := range resp.Hits.Hits {
-			if _, exist := docIDES[hit.Id]; !exist {
-				err := fmt.Errorf(`document id not match`)
-				return err
-			}
-			docIDES[hit.Id] = 1
+			docIDES[hit.Id]++
 		}
 		for _, v := range docIDES {
-			if v == 0 {
+			if v != 0 {
 				err := fmt.Errorf(`document id not match`)
 				return err
 			}
