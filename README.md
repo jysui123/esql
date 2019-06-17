@@ -18,16 +18,16 @@ Current Cadence query request processing steps are listed below:
 
 
 ## Supported features
-- =, !=, <, >, <=, >=, <>, ()
-- ANT, OR, NOT
-- LIKE, IN, REGEX, IS NULL, BETWEEN
-- LIMIT, SIZE, DISTINCT
-- COUNT, COUNT(DISTINCT)
-- AVG, MAX, MIN, SUM
-- GROUP BY, ORDER BY
-- HAVING
-- Column name selection filtering and replacing
-- special handling for cadence visibility
+- [x] =, !=, <, >, <=, >=, <>, ()
+- [x] ANT, OR, NOT
+- [x] LIKE, IN, REGEX, IS NULL, BETWEEN
+- [x] LIMIT, SIZE, DISTINCT
+- [x] COUNT, COUNT(DISTINCT)
+- [x] AVG, MAX, MIN, SUM
+- [x] GROUP BY, ORDER BY
+- [x] HAVING
+- [x] column name selection filtering and replacing
+- [x] special handling for cadence visibility
 
 
 ## Usage
@@ -69,21 +69,22 @@ Testing steps:
 - generated dsls are stored in `dslsPretty.txt` for reference
 
 
-## esql vs elasticsql
-|Item|esql|elasticsql|
-|:-:|:-:|:-:|
-|scoring|using "filter" to avoid scoring analysis and save time|using "must" which calculates scores|
-|missing check|support IS NULL, IS NOT NULL|does not support IS NULL, using colName = missing which is not standard sql|
-|NOT expression|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|not supported|
-|LIKE expression|using "regexp", support standard regex syntax|using "match_phrase", only support '%' and the smallest match unit is space separated word|
-|group by multiple columns|"composite" flattened grouping|nested "aggs" field|
-|order by aggregation function|use "bucket_sort" to order by aggregation functions, also do validation check|not supported|
-|HAVING expression|supported, using "bucket_selector" and painless scripting language|not supported|
-|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|NA|
-|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|NA|
+## Improvement from elasticsql
+|Item|detail|
+|:-:|:-:|
+|keyword IS|support standard SQL keywords IS NULL, IS NOT NULL for missing check|
+|keyword NOT|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|
+|keyword LIKE|using "wildcard" tag, support SQL wildcard '%' and '_'|
+|keyword REGEX|using "regexp" tag, support standard regular expression syntax|
+|keyword GROUP BY|using "composite" tag to flatten multiple grouping|
+|keyword ORDER BY|using "bucket_sort" to support order by aggregation functions|
+|keyword HAVING|using "bucket_selector" and painless scripting language to support HAVING|
+|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
+|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
+|optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
-|optimization|does not return document contents in aggregation query|return all document contents|
-|optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|
+|optimization|does not return document contents in aggregation query|
+|optimization|only return fields user specifies after SELECT|
 
 
 ## ES V2.x vs ES V6.5
