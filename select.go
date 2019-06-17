@@ -2,39 +2,18 @@ package esql
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/xwb1989/sqlparser"
 )
 
-var oppositeOperator = map[string]string{
-	"=":                    "!=",
-	"!=":                   "=",
-	"<":                    ">=",
-	"<=":                   ">",
-	">":                    "<=",
-	">=":                   "<",
-	"<>":                   "=",
-	"in":                   "not in",
-	"like":                 "not like",
-	"regexp":               "not regexp",
-	"not in":               "in",
-	"not like":             "like",
-	"not regexp":           "regexp",
-	sqlparser.IsNullStr:    sqlparser.IsNotNullStr,
-	sqlparser.IsNotNullStr: sqlparser.IsNullStr,
-}
+func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination ...interface{}) (dsl string, err error) {
+	if sel.Distinct != "" {
+		err := fmt.Errorf(`esql: SELECT DISTINCT not supported. use GROUP BY instead`)
+		return "", err
+	}
 
-// ESql is used to hold necessary information that required in parsing
-type ESql struct {
-	whiteList map[string]interface{}
-}
-
-func (e *ESql) init(whiteListArg map[string]interface{}) {
-	e.whiteList = whiteListArg
-}
-
-func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	var rootParent sqlparser.Expr
 	// a map that contains the main components of a query
 	dslMap := make(map[string]interface{})
@@ -47,14 +26,14 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		}
 		dslMap["query"] = dslQuery
 	}
-
-	// handle LIMIT and OFFSET keyword
-	dslMap["size"] = 1000
-	if sel.Limit != nil {
-		if sel.Limit.Offset != nil {
-			dslMap["from"] = sqlparser.String(sel.Limit.Offset)
+	// cadence special handling: add domain ID query
+	if e.cadence {
+		domainIDQuery := fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
+		if sel.Where == nil {
+			dslMap["query"] = domainIDQuery
+		} else {
+			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v]}}`, domainIDQuery, dslMap["query"])
 		}
-		dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
 	}
 
 	// handle FROM keyword, currently only support 1 target table
@@ -88,6 +67,30 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 		dslMap["_source"] = "false"
 		dslMap["stored_fields"] = `"_none_"`
 		dslMap["size"] = 0
+	} else {
+		// handle LIMIT and OFFSET keyword, these 2 keywords only works in non-aggregation query
+		dslMap["size"] = e.pageSize
+		if sel.Limit != nil {
+			if sel.Limit.Offset != nil {
+				dslMap["from"] = sqlparser.String(sel.Limit.Offset)
+			}
+			dslMap["size"] = sqlparser.String(sel.Limit.Rowcount)
+		}
+		// handle pagination
+		var searchAfterSlice []string
+		for _, v := range pagination {
+			switch v.(type) {
+			case int:
+				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`%v`, v))
+			default:
+				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
+			}
+		}
+
+		if len(searchAfterSlice) > 0 {
+			searchAfterStr := strings.Join(searchAfterSlice, ",")
+			dslMap["search_after"] = fmt.Sprintf(`[%v]`, searchAfterStr)
+		}
 	}
 
 	// handle ORDER BY <column name>
@@ -95,13 +98,24 @@ func (e *ESql) convertSelect(sel sqlparser.Select) (dsl string, err error) {
 	if _, exist := dslMap["aggs"]; !exist {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {
-			orderFieldStr := strings.Trim(sqlparser.String(orderExpr.Expr), "`")
-			// only count colNames not aggregation functions
-			if strings.ContainsAny(orderFieldStr, "()") {
-				continue
+			var colNameStr string
+			if colName, ok := orderExpr.Expr.(*sqlparser.ColName); ok {
+				colNameStr, err = e.convertColName(colName)
+				if err != nil {
+					return "", err
+				}
+			} else {
+				err := fmt.Errorf(`esql: mix order by aggregations and column names`)
+				return "", err
 			}
-			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, orderFieldStr, orderExpr.Direction)
+			colNameStr = strings.Trim(colNameStr, "`")
+			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, colNameStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
+		}
+		// cadence special handling: add runID as sorting tie breaker
+		if e.cadence {
+			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "%v"}`, TieBreaker, TieBreakerOrder)
+			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
 		}
 		if len(orderBySlice) > 0 {
 			dslMap["sort"] = fmt.Sprintf("[%v]", strings.Join(orderBySlice, ","))
@@ -136,7 +150,7 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	case *sqlparser.NotExpr:
 		return e.convertNotExpr(expr, parent)
 	case *sqlparser.RangeCond:
-		return e.convertBetweenExpr(expr, parent, false)
+		return e.convertBetweenExpr(expr, parent, true, true, false)
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(expr, parent, false)
 	default:
@@ -145,20 +159,49 @@ func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (str
 	}
 }
 
-func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
+func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fromInclusive bool, toInclusive bool, not bool) (string, error) {
 	rangeCond := expr.(*sqlparser.RangeCond)
 	lhs, ok := rangeCond.Left.(*sqlparser.ColName)
 	if !ok {
 		err := fmt.Errorf("esql: invalid range column name")
 		return "", err
 	}
-	lhsStr := sqlparser.String(lhs)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
-
-	dsl := fmt.Sprintf(`{"range": {"%v": {"gte": "%v", "lte": "%v"}}}`, lhsStr, fromStr, toStr)
+	op := rangeCond.Operator
 	if not {
-		dsl = fmt.Sprintf(`{"bool": {"must_not" : [%v]}}`, dsl)
+		op = oppositeOperator[op]
+	}
+
+	// special handling for candece query with ExecutionTime field
+	if e.cadence {
+		if fromNum, ok := strconv.Atoi(fromStr); ok == nil {
+			if fromNum < 0 {
+				fromInclusive = true
+				fromStr = "0"
+			}
+		} else {
+			err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
+			return "", err
+		}
+	}
+
+	gt := "gte"
+	lt := "lte"
+	if !fromInclusive {
+		gt = "gt"
+	}
+	if !toInclusive {
+		lt = "lt"
+	}
+
+	dsl := fmt.Sprintf(`{"range": {"%v": {"%v": "%v", "%v": "%v"}}}`, lhsStr, gt, fromStr, lt, toStr)
+	if op == sqlparser.NotBetweenStr {
+		dsl = fmt.Sprintf(`{"bool": {"must_not": [%v]}}`, dsl)
 	}
 	return dsl, nil
 }
@@ -199,7 +242,7 @@ func (e *ESql) convertNotExpr(expr sqlparser.Expr, parent sqlparser.Expr) (strin
 	case *sqlparser.IsExpr:
 		return e.convertIsExpr(exprInside, parent, true)
 	case *sqlparser.RangeCond:
-		return e.convertBetweenExpr(exprInside, parent, true)
+		return e.convertBetweenExpr(exprInside, parent, true, true, true)
 	default:
 		err := fmt.Errorf("esql: %T expression not supported", exprInside)
 		return "", err
@@ -230,7 +273,7 @@ func (e *ESql) convertAndExpr(expr sqlparser.Expr, parent sqlparser.Expr) (strin
 	if _, ok := parent.(*sqlparser.AndExpr); ok {
 		return dsl, nil
 	}
-	return fmt.Sprintf(`{"bool" : {"filter" : [%v]}}`, dsl), nil
+	return fmt.Sprintf(`{"bool": {"filter": [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertOrExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
@@ -257,16 +300,19 @@ func (e *ESql) convertOrExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string
 	if _, ok := parent.(*sqlparser.OrExpr); ok {
 		return dsl, nil
 	}
-	return fmt.Sprintf(`{"bool" : {"should" : [%v]}}`, dsl), nil
+	return fmt.Sprintf(`{"bool": {"should": [%v]}}`, dsl), nil
 }
 
 func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	isExpr := expr.(*sqlparser.IsExpr)
-	colName, ok := isExpr.Expr.(*sqlparser.ColName)
+	lhs, ok := isExpr.Expr.(*sqlparser.ColName)
 	if !ok {
 		return "", fmt.Errorf("esql: is expression only support colname missing check")
 	}
-	lhsStr := sqlparser.String(colName)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 	dsl := ""
 	op := isExpr.Operator
@@ -291,16 +337,21 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	// extract lhs, and check lhs is a colName
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
-	colName, ok := comparisonExpr.Left.(*sqlparser.ColName)
+	lhsExpr := comparisonExpr.Left
+	lhs, ok := lhsExpr.(*sqlparser.ColName)
 	if !ok {
 		return "", fmt.Errorf("esql: invalid comparison expression, lhs must be a column name")
 	}
 
-	lhsStr := sqlparser.String(colName)
+	lhsStr, err := e.convertColName(lhs)
+	if err != nil {
+		return "", err
+	}
 	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 
 	// extract rhs
-	rhsStr, err := e.convertValExpr(comparisonExpr.Right)
+	rhsExpr := comparisonExpr.Right
+	rhsStr, err := e.convertValExpr(rhsExpr)
 	if err != nil {
 		return "", err
 	}
@@ -312,43 +363,67 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		}
 		op = oppositeOperator[op]
 	}
+
+	// special handling for cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
+	if e.cadence && lhsStr == ExecutionTime {
+		switch op {
+		case "<":
+			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
+			return e.convertBetweenExpr(expr1, parent, true, false, false)
+		case "<=":
+			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
+			return e.convertBetweenExpr(expr1, parent, true, true, false)
+		case ">", ">=":
+			if rhsNum, err := strconv.Atoi(rhsStr); err == nil {
+				if rhsNum < 0 {
+					op = ">="
+					rhsStr = "0"
+				}
+			} else {
+				err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
+				return "", err
+			}
+		default:
+		}
+	}
+
 	// generate dsl according to operator
 	var dsl string
 	switch op {
 	case "=":
-		dsl = fmt.Sprintf(`{"match_phrase" : {"%v" : {"query" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"term": {"%v": "%v"}}`, lhsStr, rhsStr)
 	case "<":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"lt" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"lt": "%v"}}}`, lhsStr, rhsStr)
 	case "<=":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"lte" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"lte": "%v"}}}`, lhsStr, rhsStr)
 	case ">":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gt" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"gt": "%v"}}}`, lhsStr, rhsStr)
 	case ">=":
-		dsl = fmt.Sprintf(`{"range" : {"%v" : {"gte" : "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"range": {"%v": {"gte": "%v"}}}`, lhsStr, rhsStr)
 	case "<>", "!=":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"match_phrase" : {"%v" : {"query" : "%v"}}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"term": {"%v": "%v"}}}}`, lhsStr, rhsStr)
 	case "in":
 		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
 		rhsStr = strings.Trim(rhsStr, "(")
 		rhsStr = strings.Trim(rhsStr, ")")
-		dsl = fmt.Sprintf(`{"terms" : {"%v" : [%v]}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"terms": {"%v": [%v]}}`, lhsStr, rhsStr)
 	case "not in":
 		rhsStr = strings.Replace(rhsStr, `'`, `"`, -1)
 		rhsStr = strings.Trim(rhsStr, "(")
 		rhsStr = strings.Trim(rhsStr, ")")
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"terms" : {"%v" : [%v]}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"terms": {"%v": [%v]}}}}`, lhsStr, rhsStr)
 	case "like":
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
 		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
-		dsl = fmt.Sprintf(`{"wildcard" : {"%v" : {"wildcard": "%v"}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"wildcard": {"%v": {"wildcard": "%v"}}}`, lhsStr, rhsStr)
 	case "not like":
 		rhsStr = strings.Replace(rhsStr, `_`, `?`, -1)
 		rhsStr = strings.Replace(rhsStr, `%`, `*`, -1)
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"wildcard" : {"%v" : {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"wildcard": {"%v": {"wildcard": "%v"}}}}}`, lhsStr, rhsStr)
 	case "regexp":
-		dsl = fmt.Sprintf(`{"regexp" : {"%v" : "%v"}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"regexp": {"%v": "%v"}}`, lhsStr, rhsStr)
 	case "not regexp":
-		dsl = fmt.Sprintf(`{"bool" : {"must_not" : {"regexp" : {"%v" : "%v"}}}}`, lhsStr, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"must_not": {"regexp": {"%v": "%v"}}}}`, lhsStr, rhsStr)
 	default:
 		err := fmt.Errorf(`esql: %s operator not supported in comparison clause`, comparisonExpr.Operator)
 		return "", err
@@ -369,4 +444,25 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 		return "", err
 	}
 	return dsl, nil
+}
+
+func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
+	// here we garuantee colName is of type *ColName
+	colNameStr := sqlparser.String(colName)
+	replacedColNameStr, err := e.filterOrReplace(colNameStr)
+	if err != nil {
+		return "", err
+	}
+	return replacedColNameStr, nil
+}
+
+func (e *ESql) filterOrReplace(target string) (string, error) {
+	if e.filter != nil && !e.filter(target) {
+		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
+		return "", err
+	}
+	if e.replace != nil {
+		target = e.replace(target)
+	}
+	return target, nil
 }

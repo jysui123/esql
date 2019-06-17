@@ -18,6 +18,10 @@
 
 # Test cases
 !sqls.txt
+!sqlsCadence.txt
 
 # dependencies
 vendor
+
+# others
+query_test.py

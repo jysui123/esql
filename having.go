@@ -7,16 +7,6 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-var op2PainlessOp = map[string]string{
-	"=":  "==",
-	"!=": "!==",
-	"<":  "<",
-	"<=": "<=",
-	">":  ">",
-	">=": ">=",
-	"<>": "!==",
-}
-
 func (e *ESql) getAggHaving(having *sqlparser.Where) (string, []string, []string, []string, map[string]int, error) {
 	var aggNameSlice, aggTargetSlice, aggTagSlice []string
 	aggTagSet := make(map[string]int)
@@ -168,6 +158,10 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 		aggNameStr := strings.ToLower(funcExpr.Name.String())
 		aggTargetStr := sqlparser.String(funcExpr.Exprs)
 		aggTargetStr = strings.Trim(aggTargetStr, "`")
+		aggTargetStr, err := e.filterOrReplace(aggTargetStr)
+		if err != nil {
+			return "", err
+		}
 		var aggTagStr string
 		switch aggNameStr {
 		case "count":

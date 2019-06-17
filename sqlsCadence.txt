@@ -1,0 +1,12 @@
+SELECT * FROM test WHERE colA REGEXP '[abc]{3}'
+SELECT * FROM test WHERE colE > 3
+SELECT * FROM test WHERE ExecutionTime > -1
+SELECT colA, colB FROM test WHERE ExecutionTime >= -1
+SELECT * FROM test WHERE ExecutionTime > 0
+SELECT * FROM test WHERE ExecutionTime >= 0 AND colD < 20 OR colB = 'ab'
+SELECT * FROM test WHERE ExecutionTime > 1 ORDER BY colD, colE DESC
+SELECT * FROM test WHERE ExecutionTime < 10
+SELECT * FROM test WHERE ExecutionTime <= 10
+SELECT * FROM test WHERE ExecutionTime BETWEEN -1 AND 12 ORDER BY colD, colE DESC
+SELECT * FROM test WHERE ExecutionTime BETWEEN 0 AND 12
+SELECT * FROM test WHERE ExecutionTime BETWEEN 1 AND 12

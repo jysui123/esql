@@ -1,60 +1,7 @@
 # ESQL: Translate SQL to Elasticsearch DSL
 
-## Milestones
-
-### M1
-- [x] comparison operators: =, !=, <, >, <=, >=
-- [x] boolean operators: AND, OR, NOT
-- [x] parenthesis: ()
-- [x] auto testing
-- [x] setup git branch for pull request and code review
-- [x] keyword: LIMIT, SIZE
-- [x] depedencies management and golint checking
-
-### M2
-- [x] keyword: IS NULL, IS NOT NULL (missing check)
-- [x] keyword: BETWEEN
-- [x] keyword: IN, NOT IN
-- [x] keyword: LIKE, NOT LIKE
-
-### M3
-- [x] aggregations
-    - [x] COUNT
-    - [x] AVG, SUM
-    - [x] MIN, MAX
-    - [x] COUNT DISTINCT
-- [x] keyword: GROUP BY (column name)
-- [x] resolve conflict between aggregations and GROUP BY
-- [x] keyword: ORDER BY
-    - [x] ORDER BY column name
-    - [x] ORDER BY aggregation function
-- [x] select specific columns
-- [x] keyword: HAVING
-
-### M4
-- [ ] special handling: ExecutionTime field
-- [ ] key whitelist filtering
-- [ ] column name filtering
-- [ ] pagination, search after (avoid using magic "size"=1000)
-- [ ] select regex column names
-- [ ] run ID as sorting tie breaker
-- [ ] domain ID search
-
-### M5
-- [ ] TBD
-
-### Misc
-- [ ] optimization: docvalue_fields, term&keyword
-- [ ] documentation
-- [ ] test cases for unsupported and invalid queries
-- [ ] ES functions (not in sql standard)
-    - [ ] ES aggregation functions
-    - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
-- [ ] ES pipeline aggregations
-
-
 ## Motivation
-Currently we are using [elasticsql](https://github.com/cch123/elasticsql). However it only support up to ES V2.x while [Cadence](https://github.com/uber/cadence) is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
+Currently [Cadence](https://github.com/uber/cadence) is using [elasticsql](https://github.com/cch123/elasticsql) to translate sql query. However it only support up to ES V2.x while Cadence is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
 
 Current Cadence query request processing steps are listed below:
 - generate SQL from query
@@ -67,7 +14,38 @@ Current Cadence query request processing steps are listed below:
 - modify sorting field (add workflow id as sorting tie breaker)
 - setup search after for pagination
 
-**This project is based on [elasticsql](https://github.com/cch123/elasticsql)** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
+**This project is based on elasticsql** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
+
+
+## Supported features
+- =, !=, <, >, <=, >=, <>, ()
+- ANT, OR, NOT
+- LIKE, IN, REGEX, IS NULL, BETWEEN
+- LIMIT, SIZE, DISTINCT
+- COUNT, COUNT(DISTINCT)
+- AVG, MAX, MIN, SUM
+- GROUP BY, ORDER BY
+- HAVING
+- Column name selection filtering and replacing
+- special handling for cadence visibility
+
+
+## Usage
+Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs. Below shows a simple usage example:
+~~~~
+sql := "SELECT colA FROM myTable WHERE colB < 10"
+// custom filter that only allows user to select columns start with "col"
+func myfilter(colName string) bool {
+    return strings.HasPrefix(colName, "col")
+}
+var e ESql
+e.Init()                                // initialize
+e.SetFilter(myfilter)                   // set up filtering policy
+dsl, err := e.ConvertPretty(sql, "")    // convert sql to dsl
+if err == nil {
+    fmt.Println(dsl)
+}
+~~~~
 
 
 ## Testing Module
@@ -78,16 +56,17 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
-- `LIKE` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+- `LIKE`, `REGEX` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+- Most aggregations are not thoroughly tested
 
 Testing steps:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
-- run `chmod u+x start_service.sh test_all.sh`
-- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server
+- run `chmod u+x start_service.sh test.sh`
+- run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server (by default, elasticsearch listens port 9200, kibana listens port 5600)
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
 - optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
-- run `./test_all.sh` to run all the test cases
-- generated dsls are stored in `dsls.txt` and `dslsPretty.txt` for reference
+- run `./test.sh` to run all the test cases
+- generated dsls are stored in `dslsPretty.txt` for reference
 
 
 ## esql vs elasticsql
@@ -100,6 +79,8 @@ Testing steps:
 |group by multiple columns|"composite" flattened grouping|nested "aggs" field|
 |order by aggregation function|use "bucket_sort" to order by aggregation functions, also do validation check|not supported|
 |HAVING expression|supported, using "bucket_selector" and painless scripting language|not supported|
+|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|NA|
+|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|NA|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|return all document contents|
 |optimization|only return fields user specifies after SELECT|return all fields no matter what user specifies|
@@ -113,10 +94,11 @@ Testing steps:
 
 
 ## Attentions
+- We assume all the text are store in type `keyword`, i.e., ES does not break the text into separated words. And we use tag `term` to match the whole text rather than a word in the text.
 - `must_not` in ES does not share the same logic as `NOT` in sql
-- if you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
+- If you want to apply aggregation on some fields, they should be in type `keyword` in ES (set type of a field by put mapping to your table)
 - `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
-- ES SQL API does not support `SELECT DISTINCT`, but we can achieve the same result by `COUNT(DISTINCT colName)`
+- ES SQL API and esql do not support `SELECT DISTINCT`, but we can achieve the same result by `SELECT * FROM table GROUP BY colName`
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
 - ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
-- to use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text
+- To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text
