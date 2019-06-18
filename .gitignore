@@ -11,14 +11,13 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Testing intermediate files
-*.txt
+# Testing and intermediate files
+testcases/dsl*.txt
+testcases/dummy.txt
+testcases/sqlsBmCad.txt
+testcases/sqls_invalid.txt
 .vscode
 .DS_Store
-
-# Test cases
-!sqls.txt
-!sqlsCadence.txt
 
 # dependencies
 vendor

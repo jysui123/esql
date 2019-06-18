@@ -18,33 +18,22 @@ import (
 )
 
 var tableName = `test`
-var testCases = `sqls.txt`
-var testCasesBenchmarkAll = `sqlsBm.txt`
-var testCasesBenchmarkAgg = `sqlsBmAgg.txt`
-var testCasesBenchmarkCadence = `sqlsBmCad.txt`
-var testCasesCadence = `sqlsCadence.txt`
-var testDsls = `dsls.txt`
-var testDslsCadence = `dslsCadence.txt`
-var testDslsPretty = `dslsPretty.txt`
-var testDslsPrettyCadence = `dslsPrettyCadence.txt`
-var testBenchmarkDsls = `dslsBm.txt`
+var testCases = `testcases/sqls.txt`
+var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
+var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
+var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
+var testCasesCadence = `testcases/sqlsCadence.txt`
+var testDsls = `testcases/dsls.txt`
+var testDslsCadence = `testcases/dslsCadence.txt`
+var testDslsPretty = `testcases/dslsPretty.txt`
+var testDslsPrettyCadence = `testcases/dslsPrettyCadence.txt`
+var testBenchmarkDsls = `testcases/dslsBm.txt`
 var groundTruth = ``
 var urlES = "http://localhost:9200"
 var url = "http://localhost:9200/test0/_search"
 var urlSQL = "http://localhost:9200/_xpack/sql/translate"
 var index = "test0"
 var notTestedKeywords = []string{"LIMIT", "LIKE", "REGEX"}
-
-type TestDoc struct {
-	ColA          string  `json:"colA,omitempty"`
-	ColB          string  `json:"colB,omitempty"`
-	ColC          string  `json:"colC,omitempty"`
-	ColD          int64   `json:"colD,omitempty"`
-	ColE          float64 `json:"colE,omitempty"`
-	ExecutionTime int64   `json:"ExecutionTime,omitempty"`
-	DomainID      string  `json:"DomainID,omitempty"`
-	RunID         string  `json:"runID,omitempty"`
-}
 
 func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) error {
 	var groupES, group map[string]interface{}
@@ -282,11 +271,13 @@ func testBenchmark(t *testing.T, choice string, round int) {
 	e.Init()
 	e.SetCadence(true)
 	var fileName string
+	//search := false
 	switch choice {
-	case "all":
+	case "conversion":
 		fileName = testCasesBenchmarkAll
-	// case "cadence":
-	// 	fileName = testCasesBenchmarkCadence
+	case "search":
+		fileName = testCasesBenchmarkAll
+		//search = true
 	default:
 		t.Errorf("wrong choice")
 		return
@@ -336,7 +327,7 @@ func testBenchmark(t *testing.T, choice string, round int) {
 
 func TestBenchmark(t *testing.T) {
 	fmt.Println("Compare performance between esql and elasticsql  ... ")
-	testBenchmark(t, "all", 1000)
+	testBenchmark(t, "conversion", 1000)
 }
 
 // func TestBenchmarkAgg(t *testing.T) {
