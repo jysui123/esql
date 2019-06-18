@@ -25,6 +25,7 @@ type ESql struct {
 	cadence      bool
 	pageSize     int
 	bucketNumber int
+	exeTime      bool
 }
 
 // Init ... Initialize ESql struct
@@ -32,6 +33,7 @@ type ESql struct {
 func (e *ESql) Init() {
 	e.pageSize = DefaultPageSize
 	e.bucketNumber = DefaultBucketNumber
+	e.exeTime = false
 	e.cadence = false
 	e.replace = nil
 	e.filter = nil
@@ -60,6 +62,10 @@ func (e *ESql) SetPageSize(pageSizeArg int) {
 // SetBucketNum ... set the number of bucket returned in an aggregation query
 func (e *ESql) SetBucketNum(bucketNumArg int) {
 	e.bucketNumber = bucketNumArg
+}
+
+func (e *ESql) setDefault() {
+	e.exeTime = false
 }
 
 // ConvertPretty ...
@@ -94,6 +100,7 @@ func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interfac
 //     domainID: used for cadence visibility. for non-cadence usage just in pass empty string
 //     pagination: variadic arguments that indicates es search_after for pagination
 func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
+	defer e.setDefault()
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", err

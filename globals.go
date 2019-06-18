@@ -46,11 +46,11 @@ const (
 	DefaultPageSize      = 1000
 	DefaultBucketNumber  = 1000
 	ESDefaultMaxPageSize = 10000
-	TieBreaker           = "runID"
-	RunID                = "runID"
+	TieBreaker           = "RunID"
+	RunID                = "RunID"
 	StartTime            = "StartTime"
-	DomainID             = "domainID"
-	WorkflowID           = "workflowID"
+	DomainID             = "DomainID"
+	WorkflowID           = "WorkflowID"
 	ExecutionTime        = "ExecutionTime"
 	TieBreakerOrder      = "desc"
 	StartTimeOrder       = "desc"

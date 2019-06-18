@@ -2,7 +2,6 @@ package esql
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/xwb1989/sqlparser"
@@ -31,6 +30,9 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		domainIDQuery := fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
 		if sel.Where == nil {
 			dslMap["query"] = domainIDQuery
+		} else if e.exeTime {
+			executionTimeBound := fmt.Sprintf(`{"range": {"%v": {"gte": "0"}}}`, ExecutionTime)
+			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v, %v]}}`, domainIDQuery, executionTimeBound, dslMap["query"])
 		} else {
 			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v]}}`, domainIDQuery, dslMap["query"])
 		}
@@ -184,17 +186,8 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 		op = oppositeOperator[op]
 	}
 
-	// special handling for candece query with ExecutionTime field
-	if e.cadence {
-		if fromNum, ok := strconv.Atoi(fromStr); ok == nil {
-			if fromNum < 0 {
-				fromInclusive = true
-				fromStr = "0"
-			}
-		} else {
-			err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
-			return "", err
-		}
+	if lhsStr == ExecutionTime {
+		e.exeTime = true
 	}
 
 	gt := "gte"
@@ -371,27 +364,8 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		op = oppositeOperator[op]
 	}
 
-	// special handling for cadence usage, for ExecutionTime, it must be >= 0, so we add addtitional condition to it
-	if e.cadence && lhsStr == ExecutionTime {
-		switch op {
-		case "<":
-			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
-			return e.convertBetweenExpr(expr1, parent, true, false, false)
-		case "<=":
-			expr1 := &sqlparser.RangeCond{Operator: sqlparser.BetweenStr, Left: lhsExpr, From: fromZeroTimeExpr, To: rhsExpr}
-			return e.convertBetweenExpr(expr1, parent, true, true, false)
-		case ">", ">=":
-			if rhsNum, err := strconv.Atoi(rhsStr); err == nil {
-				if rhsNum < 0 {
-					op = ">="
-					rhsStr = "0"
-				}
-			} else {
-				err := fmt.Errorf(`esql: Execution time predicate should be numeric`)
-				return "", err
-			}
-		default:
-		}
+	if lhsStr == ExecutionTime {
+		e.exeTime = true
 	}
 
 	// generate dsl according to operator

@@ -1,34 +1,34 @@
 SELECT * FROM test0
-SELECT * FROM test0 ORDER BY colD DESC LIMIT 10
-SELECT * FROM test0 WHERE colB = 'ab'
-SELECT * FROM test0 WHERE colD = 10
-SELECT * FROM test0 WHERE (colD = 10)
-SELECT * FROM test0 WHERE (((((colD = 10)))))
-SELECT * FROM test0 WHERE colD != 10 ORDER BY colD ASC LIMIT 14
-SELECT * FROM test0 WHERE (colD != 10)
-SELECT * FROM test0 WHERE ((colD != 10))
-SELECT * FROM test0 WHERE colB = 'ab' AND colE > 2 AND colB = 'ab'
-SELECT * FROM test0 WHERE colB = 'ab' OR colD = 10
-SELECT * FROM test0 WHERE colD != 10 AND colB = 'bc' OR colB = 'ab'
-SELECT * FROM test0 WHERE (((colD != 10 AND colB = 'bc' OR (colB = 'ab' AND colE < 10))))
-SELECT * FROM test0 WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab')
-SELECT * FROM test0 WHERE colD != 10 AND (colB IN ('bc','ab','aa','aa','aa'))
-SELECT * FROM test0 WHERE (colD != 10 AND colB = 'bc') OR colB = 'ab'
-SELECT * FROM test0 WHERE ((colD != 10) AND (colB = 'bc' OR colB = 'ab'))
-SELECT * FROM test0 WHERE colD != 10 ORDER BY colE DESC
-SELECT * FROM test0 WHERE colD != 10 OR colD = 12
-SELECT * FROM test0 WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab') OR (colE > 2 or colE <= 14) AND colA != 'abc' AND colA != 'aaa'
-SELECT * FROM test0 WHERE colD != 10 ORDER BY colE
-SELECT * FROM test0 WHERE colD != 10 AND colB = 'bc' OR colB = 'ab'
+SELECT colB FROM test0 ORDER BY colD DESC LIMIT 10
+SELECT colB FROM test0 WHERE colB = 'ab'
+SELECT colB FROM test0 WHERE colD = 10
+SELECT colB FROM test0 WHERE (colD = 10)
+SELECT colB FROM test0 WHERE (((((colD = 10)))))
+SELECT colB FROM test0 WHERE colD != 10 ORDER BY colD ASC LIMIT 14
+SELECT colB FROM test0 WHERE (colD != 10)
+SELECT colB FROM test0 WHERE ((colD != 10))
+SELECT colB FROM test0 WHERE colB = 'ab' AND colE > 2 AND colB = 'ab'
+SELECT colB FROM test0 WHERE colB = 'ab' OR colD = 10
+SELECT colB FROM test0 WHERE colD != 10 AND colB = 'bc' OR colB = 'ab'
+SELECT colB FROM test0 WHERE (((colD != 10 AND colB = 'bc' OR (colB = 'ab' AND colE < 10))))
+SELECT colB FROM test0 WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab')
+SELECT colB FROM test0 WHERE colD != 10 AND (colB IN ('bc','ab','aa','aa','aa'))
+SELECT colB FROM test0 WHERE (colD != 10 AND colB = 'bc') OR colB = 'ab'
+SELECT colB FROM test0 WHERE ((colD != 10) AND (colB = 'bc' OR colB = 'ab'))
+SELECT colB FROM test0 WHERE colD != 10 ORDER BY colE DESC
+SELECT colB FROM test0 WHERE colD != 10 OR colD = 12
+SELECT colB FROM test0 WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab') OR (colE > 2 or colE <= 14) AND colA != 'abc' AND colA != 'aaa'
+SELECT colB FROM test0 WHERE colD != 10 ORDER BY colE
+SELECT colB FROM test0 WHERE colD != 10 AND colB = 'bc' OR colB = 'ab'
 SELECT * FROM test0 WHERE colD != 10 AND (colB = 'bc' OR colB = 'ab') OR colE BETWEEN 2 AND 10 AND colD BETWEEN 2 AND 14 OR colB != 'ab'
 SELECT * FROM test0 WHERE (colD != 10 AND colB = 'bc') OR colB = 'ab'
 SELECT * FROM test0 WHERE ((colD != 10) AND (colB = 'bc' OR colB = 'ab'))
 SELECT * FROM test0 WHERE colE > 3 AND colD <= 15 OR colE > 5 AND colE >=5 AND colE < 10
-SELECT * FROM test0 WHERE colE < 5 OR colD >= 17 ORDER BY colE DESC
+SELECT colB, colA FROM test0 WHERE colE < 5 OR colD >= 17 ORDER BY colE DESC
 SELECT * FROM test0 WHERE ((((colE >= 5)) AND colD < 17))
 SELECT * FROM test0 WHERE colE >= 5 AND colD < 17
-SELECT * FROM test0 WHERE colE <= 9 OR colD >= 6 OR ExecutionTime > 100 AND ExecutionTime < 300
-SELECT * FROM test0 WHERE (colE > 9 AND colD < 6)
+SELECT colB FROM test0 WHERE colE <= 9 OR colD >= 6 OR ExecutionTime > 100 AND ExecutionTime < 300
+SELECT colB FROM test0 WHERE (colE > 9 AND colD < 6)
 SELECT * FROM test0 WHERE colE > 0 OR colD <= 21.000
 SELECT * FROM test0 WHERE colE BETWEEN 3 AND 12
 SELECT * FROM test0 WHERE colE BETWEEN 3 AND 15 AND colD < 9 OR colB != 'aa'
