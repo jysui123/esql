@@ -48,10 +48,12 @@ const (
 	ESDefaultMaxPageSize = 10000
 	TieBreaker           = "runID"
 	RunID                = "runID"
+	StartTime            = "StartTime"
 	DomainID             = "domainID"
 	WorkflowID           = "workflowID"
 	ExecutionTime        = "ExecutionTime"
 	TieBreakerOrder      = "desc"
+	StartTimeOrder       = "desc"
 )
 
 func defaultCadenceColNameReplacePolicy(colNameStr string) string {

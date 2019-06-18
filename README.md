@@ -79,6 +79,7 @@ Testing steps:
 |keyword GROUP BY|using "composite" tag to flatten multiple grouping|
 |keyword ORDER BY|using "bucket_sort" to support order by aggregation functions|
 |keyword HAVING|using "bucket_selector" and painless scripting language to support HAVING|
+|aggregations|allow introducing aggregation functions from all HAVING, SELECT, ORDER BY|
 |column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
 |column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
 |optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|

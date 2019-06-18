@@ -36,10 +36,12 @@
 - [x] pagination, search after (avoid using magic "size"=1000)
 - [x] run ID as sorting tie breaker
 - [x] domain ID search
-- [ ] test cadence special handlings
+- [x] test cadence special handlings
 
-## M5
-- [ ] TBD
+## M5 Benchmark
+- [ ] measure the dsl generation speed
+- [ ] measure the generated dsl processing speed in ES
+- [ ] compare the speed between esql and elasticsql
 
 ## Misc
 - [ ] optimization: docvalue_fields, term&keyword

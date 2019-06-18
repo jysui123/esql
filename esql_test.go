@@ -19,11 +19,15 @@ import (
 
 var tableName = `test`
 var testCases = `sqls.txt`
+var testCasesBenchmarkAll = `sqlsBm.txt`
+var testCasesBenchmarkAgg = `sqlsBmAgg.txt`
+var testCasesBenchmarkCadence = `sqlsBmCad.txt`
 var testCasesCadence = `sqlsCadence.txt`
 var testDsls = `dsls.txt`
 var testDslsCadence = `dslsCadence.txt`
 var testDslsPretty = `dslsPretty.txt`
 var testDslsPrettyCadence = `dslsPrettyCadence.txt`
+var testBenchmarkDsls = `dslsBm.txt`
 var groundTruth = ``
 var urlES = "http://localhost:9200"
 var url = "http://localhost:9200/test0/_search"
@@ -127,20 +131,13 @@ func TestSQL(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	// read in sql test cases
-	f, err := os.Open(testCases)
+	sqls, err := readSQLs(testCases)
 	if err != nil {
-		t.Error("Fail to open testcase file")
+		t.Errorf("Fail to load testcases")
+		return
 	}
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanLines)
-	var sqls []string
-	for scanner.Scan() {
-		sqls = append(sqls, scanner.Text())
-	}
-	f.Close()
 
-	f, err = os.Create(testDslsPretty)
+	f, err := os.Create(testDslsPretty)
 	if err != nil {
 		t.Error("Fail to create dslPretty file")
 	}
@@ -226,8 +223,7 @@ func TestSQL(t *testing.T) {
 }
 
 func myfilter(s string) bool {
-	sz := len(s)
-	return sz == 4 && (s[sz-1] == 'A' || s[sz-1] == 'C' || s[sz-1] == 'B' || s[sz-1] == 'D' || s[sz-1] == 'E')
+	return s != "colE"
 }
 
 func TestGenCadenceDSL(t *testing.T) {
@@ -240,17 +236,11 @@ func TestGenCadenceDSL(t *testing.T) {
 	//e.SetFilter(myfilter)
 	//e.SetReplace(defaultCadenceColNameReplacePolicy)
 
-	f, err := os.Open(testCasesCadence)
+	sqls, err := readSQLs(testCases)
 	if err != nil {
-		t.Error("Fail to open testcase file")
+		t.Errorf("Fail to load testcases")
+		return
 	}
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanLines)
-	var sqls []string
-	for scanner.Scan() {
-		sqls = append(sqls, scanner.Text())
-	}
-	f.Close()
 
 	fp, err := os.Create(testDslsPrettyCadence)
 	if err != nil {
@@ -271,3 +261,90 @@ func TestGenCadenceDSL(t *testing.T) {
 	fp.Close()
 	fmt.Println("DSL Cadence generated\n---------------------------------------------------------------------")
 }
+
+func readSQLs(fileName string) ([]string, error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
+	var sqls []string
+	for scanner.Scan() {
+		sqls = append(sqls, scanner.Text())
+	}
+	f.Close()
+	return sqls, nil
+}
+
+func testBenchmark(t *testing.T, choice string, round int) {
+	var e ESql
+	e.Init()
+	e.SetCadence(true)
+	var fileName string
+	switch choice {
+	case "all":
+		fileName = testCasesBenchmarkAll
+	// case "cadence":
+	// 	fileName = testCasesBenchmarkCadence
+	default:
+		t.Errorf("wrong choice")
+		return
+	}
+
+	sqls, err := readSQLs(fileName)
+	if err != nil {
+		t.Errorf("Fail to open testcase file %v", fileName)
+		return
+	}
+	var dslEsql, dslElasticsql []string
+	start := time.Now()
+	for k := 0; k < round; k++ {
+		for i, sql := range sqls {
+			dsl, err := e.Convert(sql, "0")
+			if err != nil {
+				t.Errorf("Esql fail at %vth query: %v", i+1, err)
+				return
+			}
+			if k == 0 {
+				dslEsql = append(dslEsql, dsl)
+			}
+		}
+	}
+	elapsedEsql := time.Since(start)
+	start = time.Now()
+	for k := 0; k < round; k++ {
+		for i, sql := range sqls {
+			// fmt.Println(sql)
+			dsl, err := getCustomizedDSLFromSQL(sql, "0")
+			if err != nil {
+				t.Errorf("Elasticsql fail at %vth query", i+1)
+				return
+			}
+			if k == 0 {
+				dslElasticsql = append(dslElasticsql, dsl)
+			}
+		}
+	}
+	elapsedElasticsql := time.Since(start)
+	fmt.Printf("Convert %v sqls cost: esql: %v, elasticsql: %v\n", len(sqls)*round, elapsedEsql, elapsedElasticsql)
+	f, _ := os.Create(testBenchmarkDsls)
+	for _, dsl := range dslEsql {
+		f.WriteString(dsl + "\n")
+	}
+}
+
+func TestBenchmark(t *testing.T) {
+	fmt.Println("Compare performance between esql and elasticsql  ... ")
+	testBenchmark(t, "all", 1000)
+}
+
+// func TestBenchmarkAgg(t *testing.T) {
+// 	fmt.Println("Compare performance between esql and elasticsql aggregations ... ")
+// 	testBenchmark(t, "agg", 1000)
+// }
+
+// func TestBenchmarkCadence(t *testing.T) {
+// 	fmt.Println("Compare performance between esql and elasticsql cadence special ... ")
+// 	testBenchmark(t, "cadence", 1000)
+// }

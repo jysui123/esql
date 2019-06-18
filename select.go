@@ -114,6 +114,13 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		}
 		// cadence special handling: add runID as sorting tie breaker
 		if e.cadence {
+			// TODO: verify user doesn't sort more than 1 field and doesn't sort on IndexedValueType
+			// if not sorted, add start time sorting
+			if len(orderBySlice) == 0 {
+				cadenceOrderStartTime := fmt.Sprintf(`{"%v": "%v"}`, StartTime, StartTimeOrder)
+				orderBySlice = append(orderBySlice, cadenceOrderStartTime)
+			}
+			// also add tie breaker
 			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "%v"}`, TieBreaker, TieBreakerOrder)
 			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
 		}
