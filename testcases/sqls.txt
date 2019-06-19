@@ -57,6 +57,10 @@ SELECT COUNT(*) FROM test0
 SELECT COUNT(colB) FROM test0
 SELECT MIN(colE) FROM test0
 SELECT colA AS a FROM test0
+SELECT `colA` FROM `test0` WHERE `colB` != 'ab'
+SELECT `colA` FROM `test0` WHERE `colB` != `ab`
+SELECT `colA` FROM `test0` WHERE `colB` != "ab"
+SELECT `colA` FROM `test0` WHERE `colE` BETWEEN 2 AND 10
 SELECT COUNT(colB), AVG(colD), MAX(colE) FROM test0
 SELECT AVG(colE) FROM test0 GROUP BY colB
 SELECT AVG(colE), COUNT(*), colB FROM test0 GROUP BY colB, colA

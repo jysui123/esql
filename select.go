@@ -313,7 +313,7 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 	if err != nil {
 		return "", err
 	}
-	lhsStr = strings.Replace(lhsStr, "`", "", -1)
+
 	dsl := ""
 	op := isExpr.Operator
 	if not {
@@ -347,7 +347,6 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	if err != nil {
 		return "", err
 	}
-	lhsStr = strings.Replace(lhsStr, "`", "", -1)
 
 	// extract rhs
 	rhsExpr := comparisonExpr.Right
@@ -434,6 +433,7 @@ func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	replacedColNameStr = strings.Replace(replacedColNameStr, "`", "", -1)
 	return replacedColNameStr, nil
 }
 

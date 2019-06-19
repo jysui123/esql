@@ -52,3 +52,7 @@
     - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
 - [ ] ES pipeline aggregations
 
+- [ ] local integratino
+- [ ] prototype - mysql
+- [ ] aggregation report - what could be interesting in report
+
