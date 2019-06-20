@@ -1,8 +1,6 @@
 package esql
 
 import (
-	"strconv"
-
 	"github.com/xwb1989/sqlparser"
 )
 
@@ -37,9 +35,6 @@ var op2PainlessOp = map[string]string{
 	">=": ">=",
 	"<>": "!==",
 }
-
-// used for special handling in cadence usage
-var fromZeroTimeExpr sqlparser.Expr = &sqlparser.SQLVal{Type: sqlparser.IntVal, Val: []byte(strconv.Itoa(0))}
 
 // default sizes and identifiers used in cadence visibility
 const (
