@@ -19,7 +19,7 @@ Current Cadence query request processing steps are listed below:
 
 ## Supported features
 - [x] =, !=, <, >, <=, >=, <>, ()
-- [x] ANT, OR, NOT
+- [x] AND, OR, NOT
 - [x] LIKE, IN, REGEX, IS NULL, BETWEEN
 - [x] LIMIT, SIZE, DISTINCT
 - [x] COUNT, COUNT(DISTINCT)

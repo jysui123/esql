@@ -18,7 +18,7 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sqls.txt`
+var testCases = `testcases/sqls1.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
@@ -190,7 +190,7 @@ func TestSQL(t *testing.T) {
 		sqlDsl := string(sqlRespBody)
 		respES, err := client.Search(index).Source(sqlDsl).Do(ctx)
 		if err != nil || respES.Error != nil {
-			fmt.Printf("\tquery not covered in test module\n")
+			fmt.Printf("\tresp get ERR %v, query not covered in test module\n", err)
 			continue
 		}
 

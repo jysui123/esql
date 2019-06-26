@@ -16,6 +16,7 @@ testcases/dsl*.txt
 testcases/dummy.txt
 testcases/sqlsBmCad.txt
 testcases/sqls_invalid.txt
+
 .vscode
 .DS_Store
 

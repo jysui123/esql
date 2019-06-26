@@ -280,7 +280,7 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				if err != nil {
 					return nil, nil, nil, err
 				}
-				colNameSlice = append(colNameSlice, strings.Trim(lhsStr, "`"))
+				colNameSlice = append(colNameSlice, lhsStr)
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
 				return nil, nil, nil, err
@@ -297,7 +297,10 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 	for _, groupByExpr := range expr {
 		switch groupByItem := groupByExpr.(type) {
 		case *sqlparser.ColName:
-			colNameStr := groupByItem.Name.String()
+			colNameStr, err := e.convertColName(groupByItem)
+			if err != nil {
+				return "", nil, err
+			}
 			if _, exist := colNameSet[colNameStr]; !exist {
 				colNameSet[colNameStr] = 1
 				groupByStr := fmt.Sprintf(`{"group_%v": {"terms": {"field": "%v", "missing_bucket": true}}}`, colNameStr, colNameStr)

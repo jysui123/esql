@@ -39,9 +39,16 @@
 - [x] test cadence special handlings
 
 ## M5 Benchmark
-- [ ] measure the dsl generation speed
-- [ ] measure the generated dsl processing speed in ES
-- [ ] compare the speed between esql and elasticsql
+- [x] measure the dsl generation speed
+- [x] measure the generated dsl processing speed in ES
+- [x] compare the speed between esql and elasticsql
+
+## M6 Integration w/ Cadence
+- [x] fork cadence code and run locally
+- [ ] user snapshot to pull cadence data to local fork
+- [ ] replace elasticsql by esql
+- [ ] remove redundant code
+- [ ] report
 
 ## Misc
 - [ ] optimization: docvalue_fields, term&keyword
@@ -51,8 +58,17 @@
     - [ ] ES aggregation functions
     - [ ] GROUP BY ES aggregation functions: date_histogram, range, date_range
 - [ ] ES pipeline aggregations
-
-- [ ] local integratino
-- [ ] prototype - mysql
 - [ ] aggregation report - what could be interesting in report
+
+
+## temp
+record some of the testing results
+zookeeper, kafka, cassandra, es, kibana
+template: schema/es/visibility/index_template.json
+config:
+    config/development.yaml: elasticsearch:
+                             enable: true
+    service/frontend/service.go: newconfig: EnableReadVisibilityFromES:          dc.GetBoolPropertyFnWithDomainFilter(dynamicconfig.EnableReadVisibilityFromES, true)
+
+
 

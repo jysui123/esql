@@ -12,18 +12,78 @@ postDataRoute = '/_doc'
 headers = {"Content-type": "application/json"}
 # type keyword is often used for aggregation and sorting. It can only searched by its exact value
 # type text is often used for text analysis, e.g. search a word in the field
+# schema = {
+#     "properties": {
+#         "colA": {"type": "keyword"},
+#         "colB": {"type": "keyword"},
+#         "colC": {"type": "keyword"},
+#         "colD": {"type": "long"},
+#         "colE": {"type": "double"},
+#         "ExecutionTime": {"type": "long"},
+#         "StartTime": {"type": "long"},
+#         "DomainID": {"type": "keyword"},
+#         "RunID": {"type": "keyword"}
+#     }
+# }
 schema = {
-    "properties": {
-        "colA": {"type": "keyword"},
-        "colB": {"type": "keyword"},
-        "colC": {"type": "keyword"},
-        "colD": {"type": "long"},
-        "colE": {"type": "double"},
-        "ExecutionTime": {"type": "long"},
-        "StartTime": {"type": "long"},
-        "DomainID": {"type": "keyword"},
-        "RunID": {"type": "keyword"}
+  "order": 0,
+  "index_patterns": [
+    "cadence-visibility-*"
+  ],
+  "settings": {
+    "index": {
+      "number_of_shards": "5",
+      "number_of_replicas": "0"
     }
+  },
+  "mappings": {
+    "_doc": {
+      "dynamic": "false",
+      "properties": {
+        "DomainID": {
+          "type": "keyword"
+        },
+        "WorkflowID": {
+          "type": "keyword"
+        },
+        "RunID": {
+          "type": "keyword"
+        },
+        "WorkflowType": {
+          "type": "keyword"
+        },
+        "StartTime": {
+          "type": "long"
+        },
+        "ExecutionTime": {
+          "type": "long"
+        },
+        "CloseTime": {
+          "type": "long"
+        },
+        "CloseStatus": {
+          "type": "integer"
+        },
+        "HistoryLength": {
+          "type": "integer"
+        },
+        "KafkaKey": {
+          "type": "keyword"
+        },
+        "Attr": {
+          "properties": {
+            "CustomStringField":  { "type": "text" },
+            "CustomKeywordField": { "type": "keyword"},
+            "CustomIntField": { "type": "long"},
+            "CustomBoolField": { "type": "boolean"},
+            "CustomDoubleField": { "type": "double"},
+            "CustomDatetimeField": { "type": "date"}
+          }
+        }
+      }
+    }
+  },
+  "aliases": {}
 }
 
 def genRandStr(letters="abc", len=3):
@@ -60,15 +120,32 @@ def genPayload(fields, missingPercent=20):
 def insertData(tableName, nRows, missingPercent):
     for i in range(nRows):
         payload = {}
-        payload['colA'] = genRandStr()
-        payload['colB'] = genRandStr("ab", 2)
-        payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
-        payload['colD'] = random.randint(0, 20)
-        payload['colE'] = random.uniform(0, 20)
-        payload['ExecutionTime'] = random.randint(-500, 2000)
-        payload['StartTime'] = random.randint(-500, 2000)
+        # payload['colA'] = genRandStr()
+        # payload['colB'] = genRandStr("ab", 2)
+        # payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
+        # payload['colD'] = random.randint(0, 20)
+        # payload['colE'] = random.uniform(0, 20)
+        # payload['ExecutionTime'] = random.randint(-500, 2000)
+        # payload['StartTime'] = random.randint(-500, 2000)
         payload['DomainID'] = genRandStr("0123", 1)
         payload['RunID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
+        payload['WorkflowID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
+        payload['WorkflowType'] = genRandStr('ABCDEF', 4)
+        payload['StartTime'] = random.randint(-500, 20000)
+        payload['ExecutionTime'] = random.randint(0, 2000)
+        payload['CloseTime'] = payload['StartTime'] + payload['ExecutionTime']
+        payload['CloseStatus'] = random.randint(0, 10)
+        payload['HistoryLength'] = random.randint(1, 100)
+        payload['KafkaKey'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
+
+        attr = {}
+        attr['CustomStringField'] = genRandStr("abc", 3) + ' ' + genRandStr("abc", 3)
+        attr['CustomKeywordField'] = genRandStr("ab", 2)
+        attr['CustomIntField'] = random.randint(-500, 2000)
+        attr['CustomBoolField'] = False
+        attr['CustomDoubleField'] = random.uniform(0, 20)
+        attr['CustomDateTimeField'] = genDate('s')
+        payload['Attr'] = attr
 
         payload = genPayload(payload, missingPercent)
         resp = requests.post(url+tableName + postDataRoute, data=json.dumps(payload), headers=headers)
@@ -79,7 +156,7 @@ def insertData(tableName, nRows, missingPercent):
     print("successfully insert {} documents (rows)".format(nRows))
 
 def putMapping(tableName):
-    resp = requests.put(url+tableName + indexingRoute, data=json.dumps(schema), headers=headers)
+    resp = requests.put(url+tableName, data=json.dumps(schema), headers=headers)
     if resp == None or resp.status_code != 200:
         print("cannot put mapping: {}: {}".format(resp.status_code, requests.status_codes._codes[resp.status_code]))
         exit(1)
@@ -92,11 +169,11 @@ def deleteIndex(tableName):
         # exit(1)
     print("successfully delete index")
 
-def createIndex(tableName):
-    resp = requests.put(url+tableName)
-    if resp == None or resp.status_code != 200:
-        print("cannot create index")
-    print("successfully create index")
+# def createIndex(tableName):
+#     resp = requests.put(url+tableName)
+#     if resp == None or resp.status_code != 200:
+#         print("cannot create index")
+#     print("successfully create index")
 
 nRows = 200
 missingPercent = 20
@@ -124,14 +201,8 @@ for table in range(tableNum):
                 deleteIndex(tableName)
             elif sys.argv[1][i] == 'm':
                 putMapping(tableName)
-            elif sys.argv[1][i] == 'c':
-                createIndex(tableName)
+            # elif sys.argv[1][i] == 'c':
+            #     createIndex(tableName)
             else:
-                print("invalid argument")
+                print("invalid argument, allowed: -idm")
                 exit(1)
-
-
-
-
-
-

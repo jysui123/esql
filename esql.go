@@ -71,7 +71,7 @@ func (e *ESql) setDefault() {
 // ConvertPretty ...
 // Transform sql to elasticsearch dsl, and prettify the output json
 // usage:
-//     dsl, err := e.ConvertPretty(sql, pageParam1, pageParam2, ...)
+//     dsl, err := e.ConvertPretty(sql, domainID, pageParam1, pageParam2, ...)
 // arguments:
 //     sql: the sql query needs conversion in string format
 //     domainID: used for cadence visibility. for non-cadence usage just pass in empty string
@@ -94,7 +94,7 @@ func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interfac
 // Convert ...
 // Transform sql to elasticsearch dsl string
 // usage:
-//     dsl, err := e.Convert(sql, pageParam1, pageParam2, ...)
+//     dsl, err := e.Convert(sql, domainID, pageParam1, pageParam2, ...)
 // arguments:
 //     sql: the sql query needs conversion in string format
 //     domainID: used for cadence visibility. for non-cadence usage just in pass empty string
