@@ -18,7 +18,7 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sqls1.txt`
+var testCases = `testcases/sql.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
@@ -115,7 +115,7 @@ func TestSQL(t *testing.T) {
 
 	// initilizations
 	var e ESql
-	e.Init()
+	e.SetDefault()
 	clientHTTP := &http.Client{Timeout: time.Second * 5}
 	client, err := elastic.NewClient(elastic.SetURL(urlES))
 	if err != nil {
@@ -153,11 +153,11 @@ func TestSQL(t *testing.T) {
 		}
 
 		// use esql to translate sql to dsl
-		dsl, err := e.Convert(sql, "0")
+		dsl, _, err := e.Convert(sql, "0")
 		if err != nil {
 			t.Errorf(`esql test: %vth query convert fail: %v`, i+1, err)
 		}
-		dslPretty, err := e.ConvertPretty(sql, "0")
+		dslPretty, _, err := e.ConvertPretty(sql, "0")
 		if err != nil {
 			t.Errorf(`esql test: %vth query convert pretty fail: %v`, i+1, err)
 		}
@@ -221,7 +221,7 @@ func myfilter(s string) bool {
 func TestGenCadenceDSL(t *testing.T) {
 	fmt.Println("Test Generating DSL for Cadence...")
 	var e ESql
-	e.Init()
+	e.SetDefault()
 	e.SetCadence(true)
 	e.SetPageSize(100)
 	e.SetBucketNum(100)
@@ -240,7 +240,7 @@ func TestGenCadenceDSL(t *testing.T) {
 	}
 	start := time.Now()
 	for i, sql := range sqls {
-		dslPretty, err := e.ConvertPretty(sql, "1", "1", 123)
+		dslPretty, _, err := e.ConvertPretty(sql, "1", "1", 123)
 		if err != nil {
 			t.Error(err)
 		}
@@ -271,7 +271,7 @@ func readSQLs(fileName string) ([]string, error) {
 
 func testBenchmark(t *testing.T, choice string, round int) {
 	var e ESql
-	e.Init()
+	e.SetDefault()
 	e.SetCadence(true)
 
 	client, err := elastic.NewClient(elastic.SetURL(urlES))
@@ -303,7 +303,7 @@ func testBenchmark(t *testing.T, choice string, round int) {
 	start := time.Now()
 	for i, sql := range sqls {
 		for k := 0; k < round; k++ {
-			dsl, err := e.Convert(sql, "0")
+			dsl, _, err := e.Convert(sql, "0")
 			if err != nil {
 				t.Errorf("Esql fail at %vth query: %v", i+1, err)
 				return

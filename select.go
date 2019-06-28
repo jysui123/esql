@@ -7,10 +7,10 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination ...interface{}) (dsl string, err error) {
+func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
 	if sel.Distinct != "" {
 		err := fmt.Errorf(`esql: SELECT DISTINCT not supported. use GROUP BY instead`)
-		return "", err
+		return "", nil, err
 	}
 
 	var rootParent sqlparser.Expr
@@ -21,7 +21,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	if sel.Where != nil {
 		dslQuery, err := e.convertWhereExpr(sel.Where.Expr, rootParent)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		dslMap["query"] = dslQuery
 	}
@@ -30,7 +30,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		domainIDQuery := fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
 		if sel.Where == nil {
 			dslMap["query"] = domainIDQuery
-		} else if e.exeTime {
+		} else if strings.Contains(fmt.Sprintf("%v", dslMap["query"]), ExecutionTime) {
 			executionTimeBound := fmt.Sprintf(`{"range": {"%v": {"gte": "0"}}}`, ExecutionTime)
 			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v, %v]}}`, domainIDQuery, executionTimeBound, dslMap["query"])
 		} else {
@@ -45,13 +45,13 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		} else {
 			err = fmt.Errorf("esql: join not supported")
 		}
-		return "", err
+		return "", nil, err
 	}
 
 	// handle SELECT keyword
-	_, selectedColNameSlice, _, err := e.extractSelectedExpr(sel.SelectExprs)
+	_, selectedColNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if len(selectedColNameSlice) > 0 {
 		colNames := `"` + strings.Join(selectedColNameSlice, `", "`) + `"`
@@ -61,13 +61,15 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	// handle all aggregations, including GROUP BY, SELECT <agg function>, ORDER BY <agg function>, HAVING
 	dslAgg, err := e.convertAgg(sel)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	if dslAgg != "" {
-		dslMap["aggs"] = dslAgg
+	if dslAgg != "" || len(aggNameSlice) > 0 {
+		if dslAgg != "" {
+			dslMap["aggs"] = dslAgg
+		}
 		// do not return document contents if this is an aggregation query
-		dslMap["_source"] = "false"
-		dslMap["stored_fields"] = `"_none_"`
+		// dslMap["_source"] = "false"
+		// dslMap["stored_fields"] = `"_none_"`
 		dslMap["size"] = 0
 	} else {
 		// handle LIMIT and OFFSET keyword, these 2 keywords only works in non-aggregation query
@@ -88,7 +90,6 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 				searchAfterSlice = append(searchAfterSlice, fmt.Sprintf(`"%v"`, v))
 			}
 		}
-
 		if len(searchAfterSlice) > 0 {
 			searchAfterStr := strings.Join(searchAfterSlice, ",")
 			dslMap["search_after"] = fmt.Sprintf(`[%v]`, searchAfterStr)
@@ -97,34 +98,45 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 
 	// handle ORDER BY <column name>
 	// if it is an aggregate query, no point to order
-	if _, exist := dslMap["aggs"]; !exist {
+	if _, exist := dslMap["aggs"]; !exist && len(aggNameSlice) == 0 {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {
 			var colNameStr string
 			if colName, ok := orderExpr.Expr.(*sqlparser.ColName); ok {
 				colNameStr, err = e.convertColName(colName)
 				if err != nil {
-					return "", err
+					return "", nil, err
 				}
 			} else {
 				err := fmt.Errorf(`esql: mix order by aggregations and column names`)
-				return "", err
+				return "", nil, err
 			}
 			colNameStr = strings.Trim(colNameStr, "`")
 			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, colNameStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
+			sortField = append(sortField, colNameStr)
 		}
 		// cadence special handling: add runID as sorting tie breaker
 		if e.cadence {
-			// TODO: verify user doesn't sort more than 1 field and doesn't sort on IndexedValueType
-			// if not sorted, add start time sorting
-			if len(orderBySlice) == 0 {
+			switch len(orderBySlice) {
+			case 0: // if unsorted, use default sorting
 				cadenceOrderStartTime := fmt.Sprintf(`{"%v": "%v"}`, StartTime, StartTimeOrder)
 				orderBySlice = append(orderBySlice, cadenceOrderStartTime)
+				sortField = append(sortField, StartTime)
+			case 1: // user should not use tieBreaker to sort
+				if orderBySlice[0] == TieBreaker {
+					err = fmt.Errorf("esql: Cadence does not allow user sort by RunID")
+					return "", nil, err
+				}
+			default:
+				err = fmt.Errorf("esql: Cadence only allow 1 custom sort field")
+				return "", nil, err
 			}
-			// also add tie breaker
+
+			// add tie breaker
 			cadenceOrderTieBreaker := fmt.Sprintf(`{"%v": "%v"}`, TieBreaker, TieBreakerOrder)
 			orderBySlice = append(orderBySlice, cadenceOrderTieBreaker)
+			sortField = append(sortField, TieBreaker)
 		}
 		if len(orderBySlice) > 0 {
 			dslMap["sort"] = fmt.Sprintf("[%v]", strings.Join(orderBySlice, ","))
@@ -136,9 +148,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	for tag, content := range dslMap {
 		dslQuerySlice = append(dslQuerySlice, fmt.Sprintf(`"%v": %v`, tag, content))
 	}
-
 	dsl = "{" + strings.Join(dslQuerySlice, ",") + "}"
-	return dsl, nil
+	return dsl, sortField, nil
 }
 
 func (e *ESql) convertWhereExpr(expr sqlparser.Expr, parent sqlparser.Expr) (string, error) {
@@ -179,15 +190,12 @@ func (e *ESql) convertBetweenExpr(expr sqlparser.Expr, parent sqlparser.Expr, fr
 	if err != nil {
 		return "", err
 	}
+
 	fromStr := strings.Trim(sqlparser.String(rangeCond.From), `'`)
 	toStr := strings.Trim(sqlparser.String(rangeCond.To), `'`)
 	op := rangeCond.Operator
 	if not {
 		op = oppositeOperator[op]
-	}
-
-	if lhsStr == ExecutionTime {
-		e.exeTime = true
 	}
 
 	gt := "gte"
@@ -354,6 +362,11 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	if err != nil {
 		return "", err
 	}
+	rhsStr, err = e.filterAndProcess(lhsStr, rhsStr)
+	if err != nil {
+		return "", err
+	}
+
 	op := comparisonExpr.Operator
 	if not {
 		if _, exist := oppositeOperator[op]; !exist {
@@ -361,10 +374,6 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 			return "", err
 		}
 		op = oppositeOperator[op]
-	}
-
-	if lhsStr == ExecutionTime {
-		e.exeTime = true
 	}
 
 	// generate dsl according to operator
@@ -429,7 +438,7 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
 func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	// here we garuantee colName is of type *ColName
 	colNameStr := sqlparser.String(colName)
-	replacedColNameStr, err := e.filterOrReplace(colNameStr)
+	replacedColNameStr, err := e.filterAndReplace(colNameStr)
 	if err != nil {
 		return "", err
 	}
@@ -437,13 +446,24 @@ func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	return replacedColNameStr, nil
 }
 
-func (e *ESql) filterOrReplace(target string) (string, error) {
-	if e.filter != nil && !e.filter(target) {
-		err := fmt.Errorf("esql: cannot select field %v, forbidden", target)
-		return "", err
-	}
-	if e.replace != nil {
-		target = e.replace(target)
+func (e *ESql) filterAndReplace(target string) (string, error) {
+	if e.filterReplace != nil && e.filterReplace(target) && e.replace != nil {
+		target, err := e.replace(target)
+		if err != nil {
+			return "", err
+		}
+		return target, nil
 	}
 	return target, nil
+}
+
+func (e *ESql) filterAndProcess(colName string, value string) (string, error) {
+	if e.filterProcess != nil && e.filterProcess(colName) && e.process != nil {
+		value, err := e.process(value)
+		if err != nil {
+			return "", err
+		}
+		return value, nil
+	}
+	return value, nil
 }

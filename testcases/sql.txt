@@ -1,1 +1,1 @@
-SELECT `WorkflowType` FROM `test0` WHERE `Attr.CustomKeywordField` != 'ab'
+select count(*) from test0 where WorkflowType = 'main.Workflow'

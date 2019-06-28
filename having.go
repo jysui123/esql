@@ -158,10 +158,11 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 		aggNameStr := strings.ToLower(funcExpr.Name.String())
 		aggTargetStr := sqlparser.String(funcExpr.Exprs)
 		aggTargetStr = strings.Trim(aggTargetStr, "`")
-		aggTargetStr, err := e.filterOrReplace(aggTargetStr)
+		aggTargetStr, err := e.filterAndReplace(aggTargetStr)
 		if err != nil {
 			return "", err
 		}
+
 		var aggTagStr string
 		switch aggNameStr {
 		case "count":

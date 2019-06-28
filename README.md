@@ -39,9 +39,9 @@ func myfilter(colName string) bool {
     return strings.HasPrefix(colName, "col")
 }
 var e ESql
-e.Init()                                // initialize
-e.SetFilter(myfilter)                   // set up filtering policy
-dsl, err := e.ConvertPretty(sql, "")    // convert sql to dsl
+e.Init()                                   // initialize
+e.SetFilter(myfilter)                      // set up filtering policy
+dsl, _, err := e.ConvertPretty(sql, "")    // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
 }
@@ -82,6 +82,7 @@ Testing steps:
 |aggregations|allow introducing aggregation functions from all HAVING, SELECT, ORDER BY|
 |column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
 |column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
+|query value replacing|allow user pass an function as initializing parameter, query value will be processed by such function if the column name matched in filter function|
 |optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|

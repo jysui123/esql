@@ -9,8 +9,8 @@ import (
 )
 
 // Replace ...
-// esql use replace function to apply user colName replacing policy
-type Replace func(string) string
+// esql use replace function to apply user colName or column value replacing policy
+type Replace func(string) (string, error)
 
 // Filter ...
 // esql use filter function to prevent user to select certain columns
@@ -20,103 +20,133 @@ type Filter func(string) bool
 // ESql ...
 // ESql is used to hold necessary information that required in parsing
 type ESql struct {
-	filter       Filter
-	replace      Replace
-	cadence      bool
-	pageSize     int
-	bucketNumber int
-	exeTime      bool
+	filterReplace Filter  // select the column we want to replace name
+	filterProcess Filter  // select the column we want to process value
+	replace       Replace // if selected by filterReplace, change the column name
+	process       Replace // if selected by filterProcess, change the column value
+	cadence       bool
+	pageSize      int
+	bucketNumber  int
 }
 
-// Init ... Initialize ESql struct
+// SetDefault ...
 // all members goes to default
-func (e *ESql) Init() {
+// should not be called if there is potential race condition
+func (e *ESql) SetDefault() {
 	e.pageSize = DefaultPageSize
 	e.bucketNumber = DefaultBucketNumber
-	e.exeTime = false
 	e.cadence = false
 	e.replace = nil
-	e.filter = nil
+	e.process = nil
+	e.filterReplace = nil
+	e.filterProcess = nil
 }
 
-// SetFilter ... set up user specified column name filter policy
-func (e *ESql) SetFilter(filterArg Filter) {
-	e.filter = filterArg
+// NewESql ... return a new default ESql
+func NewESql() *ESql {
+	return &ESql{
+		pageSize:      DefaultPageSize,
+		bucketNumber:  DefaultBucketNumber,
+		cadence:       false,
+		process:       nil,
+		replace:       nil,
+		filterReplace: nil,
+		filterProcess: nil,
+	}
 }
 
 // SetReplace ... set up user specified column name replacement policy
-func (e *ESql) SetReplace(replaceArg Replace) {
+// should not be called if there is potential race condition
+func (e *ESql) SetReplace(filterArg Filter, replaceArg Replace) {
+	e.filterReplace = filterArg
 	e.replace = replaceArg
 }
 
+// SetProcess ... set up user specified column value processing policy
+// should not be called if there is potential race condition
+func (e *ESql) SetProcess(filterArg Filter, processArg Replace) {
+	e.filterProcess = filterArg
+	e.process = processArg
+}
+
 // SetCadence ... specify whether do special handling for cadence visibility
+// should not be called if there is potential race condition
 func (e *ESql) SetCadence(cadenceArg bool) {
 	e.cadence = cadenceArg
 }
 
 // SetPageSize ... set the number of documents returned in a non-aggregation query
+// should not be called if there is potential race condition
 func (e *ESql) SetPageSize(pageSizeArg int) {
 	e.pageSize = pageSizeArg
 }
 
 // SetBucketNum ... set the number of bucket returned in an aggregation query
+// should not be called if there is potential race condition
 func (e *ESql) SetBucketNum(bucketNumArg int) {
 	e.bucketNumber = bucketNumArg
 }
 
-func (e *ESql) setDefault() {
-	e.exeTime = false
-}
-
 // ConvertPretty ...
 // Transform sql to elasticsearch dsl, and prettify the output json
+//
 // usage:
-//     dsl, err := e.ConvertPretty(sql, domainID, pageParam1, pageParam2, ...)
+//  - dsl, sortField, err := e.ConvertPretty(sql, domainID, pageParam1, pageParam2, ...)
+//
 // arguments:
-//     sql: the sql query needs conversion in string format
-//     domainID: used for cadence visibility. for non-cadence usage just pass in empty string
-// 	   pagination: variadic arguments that indicates es search_after for pagination
-func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
-	dsl, err = e.Convert(sql, domainID, pagination...)
+//  - sql: the sql query needs conversion in string format
+//  - domainID: used for cadence visibility. for non-cadence usage just pass in empty string
+//  - pagination: variadic arguments that indicates es search_after for pagination
+//
+// return values:
+//  - dsl: the elasticsearch dsl json style string
+//  - sortField: string array that contains all column names used for sorting. useful for pagination.
+//  - err: contains err information
+func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
+	dsl, sortField, err = e.Convert(sql, domainID, pagination...)
 	if err != nil {
-		return dsl, err
+		return "", nil, err
 	}
 
 	var prettifiedDSLBytes bytes.Buffer
 	err = json.Indent(&prettifiedDSLBytes, []byte(dsl), "", "  ")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-
-	return string(prettifiedDSLBytes.Bytes()), err
+	return string(prettifiedDSLBytes.Bytes()), sortField, err
 }
 
 // Convert ...
 // Transform sql to elasticsearch dsl string
+//
 // usage:
-//     dsl, err := e.Convert(sql, domainID, pageParam1, pageParam2, ...)
+//  - dsl, sortField, err := e.Convert(sql, domainID, pageParam1, pageParam2, ...)
+//
 // arguments:
-//     sql: the sql query needs conversion in string format
-//     domainID: used for cadence visibility. for non-cadence usage just in pass empty string
-//     pagination: variadic arguments that indicates es search_after for pagination
-func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, err error) {
-	defer e.setDefault()
+//  - sql: the sql query needs conversion in string format
+//  - domainID: used for cadence visibility. for non-cadence usage just in pass empty string
+//  - pagination: variadic arguments that indicates es search_after for
+//
+// return values:
+//	- dsl: the elasticsearch dsl json style string
+//	- sortField: string array that contains all column names used for sorting. useful for pagination.
+//  - err: contains err information
+func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
+		dsl, sortField, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
 	default:
 		err = fmt.Errorf(`esql: Queries other than select not supported`)
 	}
 
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-
-	return dsl, nil
+	return dsl, sortField, nil
 }

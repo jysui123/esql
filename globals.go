@@ -1,6 +1,8 @@
 package esql
 
 import (
+	"fmt"
+
 	"github.com/xwb1989/sqlparser"
 )
 
@@ -53,4 +55,11 @@ const (
 
 func defaultCadenceColNameReplacePolicy(colNameStr string) string {
 	return "Attr." + colNameStr
+}
+
+// DEBUG usage
+func print(v interface{}) {
+	fmt.Println("==============")
+	fmt.Println(v)
+	fmt.Println("==============")
 }
