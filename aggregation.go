@@ -67,7 +67,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 
 	// add necessary aggregations originated from order by and having
 	for tag, i := range aggTagOrderBySet {
-		if _, exist := aggTagSet[tag]; !exist && tag != "_count" {
+		if _, exist := aggTagSet[tag]; !exist {
 			aggTagSet[tag] = len(aggTagSet)
 			aggNameSlice = append(aggNameSlice, aggNameOrderBySlice[i])
 			aggTargetSlice = append(aggTargetSlice, aggTargetOrderBySlice[i])
@@ -88,8 +88,10 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	if len(aggTagSlice) > 0 {
 		var dslAggSlice []string
 		for i, tag := range aggTagSlice {
-			dslAgg := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, tag, aggNameSlice[i], aggTargetSlice[i])
-			dslAggSlice = append(dslAggSlice, dslAgg)
+			if tag != "_count" {
+				dslAgg := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, tag, aggNameSlice[i], aggTargetSlice[i])
+				dslAggSlice = append(dslAggSlice, dslAgg)
+			}
 		}
 		if len(aggTagOrderBySlice) > 0 {
 			var dslOrderSlice []string

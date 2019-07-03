@@ -31,16 +31,18 @@ Current Cadence query request processing steps are listed below:
 
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the function apis that an outside user needs. Below shows a simple usage example:
+Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example:
 ~~~~
 sql := "SELECT colA FROM myTable WHERE colB < 10"
-// custom filter that only allows user to select columns start with "col"
-func myfilter(colName string) bool {
+// custom policy that change colName like "col.." to "myCol.."
+func myFilter(colName string) bool {
     return strings.HasPrefix(colName, "col")
 }
-var e ESql
-e.Init()                                   // initialize
-e.SetFilter(myfilter)                      // set up filtering policy
+func myReplace(colName string) string {
+    return colName[3:]+"myCol"
+}
+e := NewESql()
+e.SetReplace(myFilter, myReplace)          // set up filtering policy
 dsl, _, err := e.ConvertPretty(sql, "")    // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
@@ -83,6 +85,7 @@ Testing steps:
 |column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
 |column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
 |query value replacing|allow user pass an function as initializing parameter, query value will be processed by such function if the column name matched in filter function|
+|pagination|also return the sorting fields for future search after usage|
 |optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|
 |optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
 |optimization|does not return document contents in aggregation query|

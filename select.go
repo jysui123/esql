@@ -27,14 +27,24 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	}
 	// cadence special handling: add domain ID query
 	if e.cadence {
-		domainIDQuery := fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
+		var domainIDQuery string
+		if domainID != "" {
+			domainIDQuery = fmt.Sprintf(`{"term": {"%v": "%v"}}`, DomainID, domainID)
+		}
 		if sel.Where == nil {
-			dslMap["query"] = domainIDQuery
-		} else if strings.Contains(fmt.Sprintf("%v", dslMap["query"]), ExecutionTime) {
-			executionTimeBound := fmt.Sprintf(`{"range": {"%v": {"gte": "0"}}}`, ExecutionTime)
-			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v, %v]}}`, domainIDQuery, executionTimeBound, dslMap["query"])
+			if domainID != "" {
+				dslMap["query"] = domainIDQuery
+			}
 		} else {
-			dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v, %v]}}`, domainIDQuery, dslMap["query"])
+			if domainID != "" {
+				domainIDQuery = domainIDQuery + ","
+			}
+			if strings.Contains(fmt.Sprintf("%v", dslMap["query"]), ExecutionTime) {
+				executionTimeBound := fmt.Sprintf(`{"range": {"%v": {"gte": "0"}}}`, ExecutionTime)
+				dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v %v, %v]}}`, domainIDQuery, executionTimeBound, dslMap["query"])
+			} else {
+				dslMap["query"] = fmt.Sprintf(`{"bool": {"filter": [%v %v]}}`, domainIDQuery, dslMap["query"])
+			}
 		}
 	}
 

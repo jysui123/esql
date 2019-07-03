@@ -45,10 +45,14 @@
 
 ## M6 Integration w/ Cadence
 - [x] fork cadence code and run locally
-- [ ] user snapshot to pull cadence data to local fork
-- [ ] replace elasticsql by esql
-- [ ] remove redundant code
-- [ ] report
+- [x] replace elasticsql by esql (mainly list workflow api)
+- [x] remove redundant code
+
+## M7 Cadence Report
+- [ ] use snapshot to pull cadence data to local fork
+- [ ] add a new command to Cadence CLI
+- [ ] use aggregation of esql to process some straightforward report query
+- [ ] show report result in frontend in markdown
 
 ## Misc
 - [ ] optimization: docvalue_fields, term&keyword
