@@ -185,6 +185,7 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 			err := fmt.Errorf(`esql: HAVING: aggregation function %v not supported`, aggNameStr)
 			return "", err
 		}
+		aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
 		aggTagSet[aggTagStr] = len(*aggNameSlice)
 		*aggNameSlice = append(*aggNameSlice, aggNameStr)
 		*aggTargetSlice = append(*aggTargetSlice, aggTargetStr)

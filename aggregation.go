@@ -194,6 +194,7 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 				}
 				continue
 			}
+			aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
 			aggTagDirSet[aggTagStr] = orderExpr.Direction
 			aggTagSet[aggTagStr] = len(aggTagSet)
 			aggNameSlice = append(aggNameSlice, aggNameStr)
@@ -254,6 +255,7 @@ func (e *ESql) getAggSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []
 		if _, exist := aggTagSet[aggTagStr]; exist {
 			continue
 		}
+		aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
 		aggTagSet[aggTagStr] = len(aggTagSet)
 		aggNameSlice = append(aggNameSlice, aggNameStr)
 		aggTargetSlice = append(aggTargetSlice, aggTargetStr)

@@ -77,7 +77,8 @@ schema = {
             "CustomIntField": { "type": "long"},
             "CustomBoolField": { "type": "boolean"},
             "CustomDoubleField": { "type": "double"},
-            "CustomDatetimeField": { "type": "date"}
+            "CustomDatetimeField": {"type": "date",
+            "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
           }
         }
       }
@@ -106,6 +107,8 @@ def genDate(precision="d", startYear=2010):
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
     if precision in ["s", "ms"]:
         dateStr = dateStr + ":" + padZero(str(random.randint(0, 59)))
+        if not precision == "ms":
+          dateStr = dateStr + "Z"
     if precision in ["ms"]:
         dateStr = dateStr + "." + padZero(str(random.randint(0, 999)), 3)
     return dateStr
@@ -130,9 +133,9 @@ def insertData(tableName, nRows, missingPercent):
         payload['DomainID'] = genRandStr("0123", 1)
         payload['RunID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
         payload['WorkflowID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
-        payload['WorkflowType'] = genRandStr('ABCDEF', 4)
-        payload['StartTime'] = random.randint(-500, 20000)
-        payload['ExecutionTime'] = random.randint(0, 2000)
+        payload['WorkflowType'] = "main.workflow"+genRandStr('012345', 1)
+        payload['StartTime'] = random.randint(-500, 1200000000000000000)
+        payload['ExecutionTime'] = random.randint(0, 200000000000000000)
         payload['CloseTime'] = payload['StartTime'] + payload['ExecutionTime']
         payload['CloseStatus'] = random.randint(0, 10)
         payload['HistoryLength'] = random.randint(1, 100)
@@ -144,7 +147,7 @@ def insertData(tableName, nRows, missingPercent):
         attr['CustomIntField'] = random.randint(-500, 2000)
         attr['CustomBoolField'] = False
         attr['CustomDoubleField'] = random.uniform(0, 20)
-        attr['CustomDateTimeField'] = genDate('s')
+        attr['CustomDatetimeField'] = genDate('s')
         payload['Attr'] = attr
 
         payload = genPayload(payload, missingPercent)

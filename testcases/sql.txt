@@ -1,1 +1,2 @@
-select count(*) from test0 where WorkflowType = 'main.Workflow'
+SELECT * FROM test0 WHERE `Attr.CustomDateTimeField` > "2012-09-05T09:07:08Z"
+SELECT * FROM test0 WHERE `Attr.CustomDateTimeField` = "2012-09-05T09:07:08Z"
