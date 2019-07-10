@@ -32,7 +32,7 @@ Current Cadence query request processing steps are listed below:
 
 ## Usage
 Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example:
-~~~~
+~~~~go
 sql := "SELECT colA FROM myTable WHERE colB < 10"
 // custom policy that change colName like "col.." to "myCol.."
 func myFilter(colName string) bool {

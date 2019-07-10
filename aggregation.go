@@ -75,7 +75,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 		}
 	}
 	for tag, i := range aggTagHavingSet {
-		if _, exist := aggTagSet[tag]; !exist && tag != "_count" {
+		if _, exist := aggTagSet[tag]; !exist {
 			aggTagSet[tag] = len(aggTagSet)
 			aggNameSlice = append(aggNameSlice, aggNameHavingSlice[i])
 			aggTargetSlice = append(aggTargetSlice, aggTargetHavingSlice[i])

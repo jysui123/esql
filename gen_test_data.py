@@ -130,14 +130,14 @@ def insertData(tableName, nRows, missingPercent):
         # payload['colE'] = random.uniform(0, 20)
         # payload['ExecutionTime'] = random.randint(-500, 2000)
         # payload['StartTime'] = random.randint(-500, 2000)
-        payload['DomainID'] = genRandStr("0123", 1)
+        payload['DomainID'] = genRandStr("012", 1)
         payload['RunID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
         payload['WorkflowID'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
-        payload['WorkflowType'] = "main.workflow"+genRandStr('012345', 1)
+        payload['WorkflowType'] = "main.workflow"+genRandStr('012', 1)
         payload['StartTime'] = random.randint(-500, 1200000000000000000)
         payload['ExecutionTime'] = random.randint(0, 200000000000000000)
         payload['CloseTime'] = payload['StartTime'] + payload['ExecutionTime']
-        payload['CloseStatus'] = random.randint(0, 10)
+        payload['CloseStatus'] = random.randint(0, 2)
         payload['HistoryLength'] = random.randint(1, 100)
         payload['KafkaKey'] = genRandStr('abcdefghijklmnopqrstuvwxyz', 8)
 
