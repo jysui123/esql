@@ -51,7 +51,7 @@ func myProcess(timeStr string) (string, error) {
     return fmt.Sprintf("%v", parsedTime.UnixNano()), nil
 }
 // with the 2 policies, converted dsl is equivalent to
-// "SELECT colA FROM myTable WHERE myColB < 10 AND dateTime = 'xxxxxxxxxxx'"
+// "SELECT myColA FROM myTable WHERE myColB < 10 AND dateTime = 'xxxxxxxxxxx'"
 // in which the time is in unix nano format
 e := NewESql()
 e.SetReplace(myFilter1, myReplace)         // set up filtering policy
