@@ -31,18 +31,31 @@ Current Cadence query request processing steps are listed below:
 
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example:
+Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example showing how to use custom filtering and processing policy:
 ~~~~go
-sql := "SELECT colA FROM myTable WHERE colB < 10"
+sql := "SELECT colA FROM myTable WHERE colB < 10 AND dateTime = '2015-01-01T02:59:59Z'"
 // custom policy that change colName like "col.." to "myCol.."
-func myFilter(colName string) bool {
+func myFilter1(colName string) bool {
     return strings.HasPrefix(colName, "col")
 }
-func myReplace(colName string) string {
-    return colName[3:]+"myCol"
+func myReplace(colName string) (string, error) {
+    return colName[3:]+"myCol", nil
 }
+// custom policy that convert formatted time string to unix nano
+func myFilter2(colName string) bool {
+    return strings.Contains(colName, "Time") || strings.Contains(colName, "time")
+}
+func myProcess(timeStr string) (string, error) {
+    // convert formatted time string to unix nano integer
+    parsedTime, _ := time.Parse(defaultDateTimeFormat, timeStr)
+    return fmt.Sprintf("%v", parsedTime.UnixNano()), nil
+}
+// with the 2 policies, converted dsl is equivalent to
+// "SELECT colA FROM myTable WHERE myColB < 10 AND dateTime = 'xxxxxxxxxxx'"
+// in which the time is in unix nano format
 e := NewESql()
-e.SetReplace(myFilter, myReplace)          // set up filtering policy
+e.SetReplace(myFilter1, myReplace)         // set up filtering policy
+e.SetProcess(myFilter2, myProcess)         // set up process policy
 dsl, _, err := e.ConvertPretty(sql, "")    // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
@@ -58,7 +71,7 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 There are some specific features not covered in testing yet:
 - `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
-- `LIKE`, `REGEX` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
+- `LIKE`, `REGEXP` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
 - Most aggregations are not thoroughly tested
 
 Testing steps:
@@ -107,10 +120,14 @@ Testing steps:
 - ES SQL API and esql do not support `SELECT DISTINCT`, but we can achieve the same result by `SELECT * FROM table GROUP BY colName`
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
 - ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
-- To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text
+- To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
 
 
 ## NOT SUPPORTED
 - JOIN
 - aggregation(DISTINCT colName)
 - GROUP BY aggregation ORDER BY colName
+
+## CURRENT BUGS
+- parsing issue w/ time format
+
