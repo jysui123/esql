@@ -126,7 +126,8 @@ Testing steps:
 ## NOT SUPPORTED
 - JOIN
 - aggregation(DISTINCT colName)
-- GROUP BY aggregation ORDER BY colName
+- nested queries
+- arithmetics and functions
 
 ## CURRENT BUGS
 - parsing issue w/ time format
