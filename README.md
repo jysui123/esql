@@ -1,21 +1,5 @@
 # ESQL: Translate SQL to Elasticsearch DSL
-
-## Motivation
-Currently [Cadence](https://github.com/uber/cadence) is using [elasticsql](https://github.com/cch123/elasticsql) to translate sql query. However it only support up to ES V2.x while Cadence is using ES V6.x. Beyond that, Cadence has some specific requirements that not supported by elasticsql yet.
-
-Current Cadence query request processing steps are listed below:
-- generate SQL from query
-- use elasticsql to translate SQL to DSL
-- ES V6.x does not support "missing" field, convert "missing" to "bool","must_not","exist" for ExecutionTime query if any
-- complete "range" field for ExecutionTime query by adding {"gt": 0}
-- add domain query
-- key whitelist filtering
-- delete some useless field like "from", "size"
-- modify sorting field (add workflow id as sorting tie breaker)
-- setup search after for pagination
-
-**This project is based on elasticsql** and aims at dealing all these addtional processing steps and providing an api to generate DSL in one step for visibility usage in Cadence.
-
+Use SQL to query Elasticsearch. ES V6 compatible.
 
 ## Supported features
 - [x] =, !=, <, >, <=, >=, <>, ()
@@ -28,18 +12,34 @@ Current Cadence query request processing steps are listed below:
 - [x] HAVING
 - [x] column name selection filtering and replacing
 - [x] special handling for cadence visibility
+- [x] pagination (search after)
+- [ ] JOIN
+- [ ] aggregation(DISTINCT colName)
+- [ ] nested queries
+- [ ] arithmetics and functions
+- [ ] comparison between colNames (e.g. colA < colB)
 
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example showing how to use custom filtering and processing policy:
+Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example:
+~~~~go
+sql := `SELECT COUNT(*), MAX(colA) FROM myTable WHERE colB < 10 GROUP BY colC HAVING COUNT(*) > 20`
+e := NewESql()
+dsl, _, err := e.ConvertPretty(sql)    // convert sql to dsl
+if err == nil {
+    fmt.Println(dsl)
+}
+~~~~
+ESQL support custom colName replacement policy and query target processing policy. It can be useful for time queries. User can register functions to let esql to automatically replace certain colNames and convert query target. Below shows an example.
 ~~~~go
 sql := "SELECT colA FROM myTable WHERE colB < 10 AND dateTime = '2015-01-01T02:59:59Z'"
+domainID := "CadenceSampleDomain"
 // custom policy that change colName like "col.." to "myCol.."
 func myFilter1(colName string) bool {
     return strings.HasPrefix(colName, "col")
 }
 func myReplace(colName string) (string, error) {
-    return colName[3:]+"myCol", nil
+    return "myCol"+colName[3:], nil
 }
 // custom policy that convert formatted time string to unix nano
 func myFilter2(colName string) bool {
@@ -50,59 +50,37 @@ func myProcess(timeStr string) (string, error) {
     parsedTime, _ := time.Parse(defaultDateTimeFormat, timeStr)
     return fmt.Sprintf("%v", parsedTime.UnixNano()), nil
 }
-// with the 2 policies, converted dsl is equivalent to
-// "SELECT myColA FROM myTable WHERE myColB < 10 AND dateTime = 'xxxxxxxxxxx'"
+// with the 2 policies , converted dsl is equivalent to
+// "SELECT myColA FROM myTable WHERE myColB < 10 AND dateTime = '1561678568048000000'
 // in which the time is in unix nano format
 e := NewESql()
-e.SetReplace(myFilter1, myReplace)         // set up filtering policy
-e.SetProcess(myFilter2, myProcess)         // set up process policy
-dsl, _, err := e.ConvertPretty(sql, "")    // convert sql to dsl
+e.SetReplace(myFilter1, myReplace)     // set up filtering policy
+e.SetProcess(myFilter2, myProcess)     // set up process policy
+dsl, _, err := e.ConvertPretty(sql)    // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
 }
 ~~~~
 
 
-## Testing Module
+## Testing
 We are using elasticsearch's SQL translate API as a reference in testing. Testing contains 3 basic steps:
 - using elasticsearch's SQL translate API to translate sql to dsl
 - using our library to convert sql to dsl
 - query local elasticsearch server with both dsls, check the results are identical
 
-There are some specific features not covered in testing yet:
-- `LIMIT` keyword: when order is not specified, identical queries with LIMIT can return different results
+Features not covered yet:
 - `LIKE`, `REGEXP` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
-- Most aggregations are not thoroughly tested
+- some aggregations are not thoroughly tested since ES's sql api does not support them well
 
-Testing steps:
+To run test locally:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip
 - run `chmod u+x start_service.sh test.sh`
 - run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server (by default, elasticsearch listens port 9200, kibana listens port 5600)
 - optional: modify `sqls.txt` to add custom SQL queries as test cases
-- optional: run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
+- run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
 - run `./test.sh` to run all the test cases
 - generated dsls are stored in `dslsPretty.txt` for reference
-
-
-## Improvement from elasticsql
-|Item|detail|
-|:-:|:-:|
-|keyword IS|support standard SQL keywords IS NULL, IS NOT NULL for missing check|
-|keyword NOT|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|
-|keyword LIKE|using "wildcard" tag, support SQL wildcard '%' and '_'|
-|keyword REGEX|using "regexp" tag, support standard regular expression syntax|
-|keyword GROUP BY|using "composite" tag to flatten multiple grouping|
-|keyword ORDER BY|using "bucket_sort" to support order by aggregation functions|
-|keyword HAVING|using "bucket_selector" and painless scripting language to support HAVING|
-|aggregations|allow introducing aggregation functions from all HAVING, SELECT, ORDER BY|
-|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
-|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
-|query value replacing|allow user pass an function as initializing parameter, query value will be processed by such function if the column name matched in filter function|
-|pagination|also return the sorting fields for future search after usage|
-|optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|
-|optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
-|optimization|does not return document contents in aggregation query|
-|optimization|only return fields user specifies after SELECT|
 
 
 ## ES V2.x vs ES V6.5
@@ -123,12 +101,27 @@ Testing steps:
 - To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
 
 
-## NOT SUPPORTED
-- JOIN
-- aggregation(DISTINCT colName)
-- nested queries
-- arithmetics and functions
-
-## CURRENT BUGS
+## Current Issue
 - parsing issue w/ time format
 
+
+## Acknowledgement
+This project is originated from [elasticsql](https://github.com/cch123/elasticsql). Table below shows the improvement.
+|Item|detail|
+|:-:|:-:|
+|keyword IS|support standard SQL keywords IS NULL, IS NOT NULL for missing check|
+|keyword NOT|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|
+|keyword LIKE|using "wildcard" tag, support SQL wildcard '%' and '_'|
+|keyword REGEX|using "regexp" tag, support standard regular expression syntax|
+|keyword GROUP BY|using "composite" tag to flatten multiple grouping|
+|keyword ORDER BY|using "bucket_sort" to support order by aggregation functions|
+|keyword HAVING|using "bucket_selector" and painless scripting language to support HAVING|
+|aggregations|allow introducing aggregation functions from all HAVING, SELECT, ORDER BY|
+|column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
+|column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|
+|query value replacing|allow user pass an function as initializing parameter, query value will be processed by such function if the column name matched in filter function|
+|pagination|also return the sorting fields for future search after usage|
+|optimization|using "filter" tag rather than "must" tag to avoid scoring analysis and save time|
+|optimization|no redundant {"bool": {"filter": xxx}} wrapped|all queries wrapped by {"bool": {"filter": xxx}}|
+|optimization|does not return document contents in aggregation query|
+|optimization|only return fields user specifies after SELECT|

@@ -18,7 +18,7 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sql.txt`
+var testCases = `testcases/sqls.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
@@ -153,16 +153,12 @@ func TestSQL(t *testing.T) {
 		}
 
 		// use esql to translate sql to dsl
-		dsl, _, err := e.Convert(sql, "0")
-		if err != nil {
-			t.Errorf(`esql test: %vth query convert fail: %v`, i+1, err)
-		}
-		dslPretty, _, err := e.ConvertPretty(sql, "0")
+		dsl, _, err := e.ConvertPretty(sql)
 		if err != nil {
 			t.Errorf(`esql test: %vth query convert pretty fail: %v`, i+1, err)
 		}
 		f.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
-		f.WriteString(dslPretty)
+		f.WriteString(dsl)
 		fmt.Printf("\tquery dsl generated\n")
 
 		// query with esql dsl
@@ -240,7 +236,7 @@ func TestGenCadenceDSL(t *testing.T) {
 	}
 	start := time.Now()
 	for i, sql := range sqls {
-		dslPretty, _, err := e.ConvertPretty(sql, "1", "1", 123)
+		dslPretty, _, err := e.ConvertPretty(sql, "1", 123)
 		if err != nil {
 			t.Error(err)
 		}
@@ -303,7 +299,7 @@ func testBenchmark(t *testing.T, choice string, round int) {
 	start := time.Now()
 	for i, sql := range sqls {
 		for k := 0; k < round; k++ {
-			dsl, _, err := e.Convert(sql, "0")
+			dsl, _, err := e.Convert(sql)
 			if err != nil {
 				t.Errorf("Esql fail at %vth query: %v", i+1, err)
 				return

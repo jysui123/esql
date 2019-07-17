@@ -13,7 +13,7 @@ import (
 type Replace func(string) (string, error)
 
 // Filter ...
-// esql use filter function to prevent user to select certain columns
+// esql use filter function decide whether the policy will be applied to the column
 // only accept column names that filter(colName) == true
 type Filter func(string) bool
 
@@ -69,12 +69,6 @@ func (e *ESql) SetProcess(filterArg Filter, processArg Replace) {
 	e.process = processArg
 }
 
-// SetCadence ... specify whether do special handling for cadence visibility
-// should not be called if there is potential race condition
-func (e *ESql) SetCadence(cadenceArg bool) {
-	e.cadence = cadenceArg
-}
-
 // SetPageSize ... set the number of documents returned in a non-aggregation query
 // should not be called if there is potential race condition
 func (e *ESql) SetPageSize(pageSizeArg int) {
@@ -95,15 +89,14 @@ func (e *ESql) SetBucketNum(bucketNumArg int) {
 //
 // arguments:
 //  - sql: the sql query needs conversion in string format
-//  - domainID: used for cadence visibility. for non-cadence usage just pass in empty string
 //  - pagination: variadic arguments that indicates es search_after for pagination
 //
 // return values:
 //  - dsl: the elasticsearch dsl json style string
 //  - sortField: string array that contains all column names used for sorting. useful for pagination.
 //  - err: contains err information
-func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
-	dsl, sortField, err = e.Convert(sql, domainID, pagination...)
+func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string, sortField []string, err error) {
+	dsl, sortField, err = e.Convert(sql, pagination...)
 	if err != nil {
 		return "", nil, err
 	}
@@ -124,14 +117,13 @@ func (e *ESql) ConvertPretty(sql string, domainID string, pagination ...interfac
 //
 // arguments:
 //  - sql: the sql query needs conversion in string format
-//  - domainID: used for cadence visibility. for non-cadence usage just in pass empty string
 //  - pagination: variadic arguments that indicates es search_after for
 //
 // return values:
 //	- dsl: the elasticsearch dsl json style string
 //	- sortField: string array that contains all column names used for sorting. useful for pagination.
 //  - err: contains err information
-func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
+func (e *ESql) Convert(sql string, pagination ...interface{}) (dsl string, sortField []string, err error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", nil, err
@@ -140,7 +132,7 @@ func (e *ESql) Convert(sql string, domainID string, pagination ...interface{}) (
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, sortField, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
+		dsl, sortField, err = e.convertSelect(*(stmt.(*sqlparser.Select)), "", pagination...)
 	default:
 		err = fmt.Errorf(`esql: Queries other than select not supported`)
 	}
