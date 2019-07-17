@@ -107,6 +107,7 @@ To run test locally:
 
 ## Acknowledgement
 This project is originated from [elasticsql](https://github.com/cch123/elasticsql). Table below shows the improvement.
+
 |Item|detail|
 |:-:|:-:|
 |keyword IS|support standard SQL keywords IS NULL, IS NOT NULL for missing check|
