@@ -1,1 +1,0 @@
-SELECT * FROM test0 WHERE `Attr.CustomDateTimeField` > "2012-09-05T09:07:08Z"
