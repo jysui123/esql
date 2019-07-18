@@ -44,11 +44,13 @@ func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) 
 		fmt.Printf("\tagg without group by, not covered in test module\n")
 		return nil
 	}
-	err := json.Unmarshal(*respES.Aggregations["groupby"], &groupES)
+	respESbyte, _ := respES.Aggregations["groupby"].MarshalJSON()
+	err := json.Unmarshal(respESbyte, &groupES)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(*resp.Aggregations["groupby"], &group)
+	respByte, _ := resp.Aggregations["groupby"].MarshalJSON()
+	err = json.Unmarshal(respByte, &group)
 	if err != nil {
 		return err
 	}
