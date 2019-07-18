@@ -20,6 +20,7 @@ import (
 var tableName = `test`
 var testCases = `testcases/sqls.txt`
 var testCasesInvalid = `testcases/sqlsInvalid.txt`
+var testCasesInvalidCad = `testcases/sqlsInvalidCad.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
@@ -145,6 +146,22 @@ func TestCoverage(t *testing.T) {
 			return
 		}
 	}
+
+	sqls, err = readSQLs(testCasesInvalid)
+	if err != nil {
+		t.Errorf("Fail to load testcasesInvalid")
+		return
+	}
+
+	for i, sql := range sqls {
+		fmt.Printf("test %dth query ...\n", i+1)
+		_, _, err := e.ConvertPretty(sql)
+		if err == nil {
+			t.Errorf("%vth query should fail but not", i+1)
+			return
+		}
+	}
+
 	e.SetDefault()
 	e.SetCadence(true)
 	e.SetReplace(filter1, replace)
@@ -167,16 +184,15 @@ func TestCoverage(t *testing.T) {
 		}
 	}
 
-	e.SetDefault()
-	sqls, err = readSQLs(testCasesInvalid)
+	sqls, err = readSQLs(testCasesInvalidCad)
 	if err != nil {
-		t.Errorf("Fail to load testcasesInvalid")
+		t.Errorf("Fail to load testcasesInvalidCad")
 		return
 	}
 
 	for i, sql := range sqls {
 		fmt.Printf("test %dth query ...\n", i+1)
-		_, _, err := e.ConvertPretty(sql)
+		_, _, err := e.ConvertPrettyCadence(sql, "1", "12")
 		if err == nil {
 			t.Errorf("%vth query should fail but not", i+1)
 			return
