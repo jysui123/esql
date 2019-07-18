@@ -19,6 +19,7 @@ import (
 
 var tableName = `test`
 var testCases = `testcases/sqls.txt`
+var testCasesInvalid = `testcases/sqlsInvalid.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
@@ -159,9 +160,25 @@ func TestCoverage(t *testing.T) {
 
 	for i, sql := range sqls {
 		fmt.Printf("test %dth query ...\n", i+1)
-		_, _, err := e.ConvertPrettyCadence(sql, "1")
+		_, _, err := e.ConvertPrettyCadence(sql, "1", "12")
 		if err != nil {
 			t.Errorf("%vth query fails: %v", i+1, err)
+			return
+		}
+	}
+
+	e.SetDefault()
+	sqls, err = readSQLs(testCasesInvalid)
+	if err != nil {
+		t.Errorf("Fail to load testcasesInvalid")
+		return
+	}
+
+	for i, sql := range sqls {
+		fmt.Printf("test %dth query ...\n", i+1)
+		_, _, err := e.ConvertPretty(sql)
+		if err == nil {
+			t.Errorf("%vth query should fail but not", i+1)
 			return
 		}
 	}

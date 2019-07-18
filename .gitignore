@@ -15,6 +15,7 @@
 testcases/*.txt
 !testcases/sqls.txt
 !testcases/sqlsCad.txt
+!testcases/sqlsInvalid.txt
 cadenceRef.go
 
 .vscode
