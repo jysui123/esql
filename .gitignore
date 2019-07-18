@@ -24,3 +24,4 @@ vendor
 
 # others
 query_test.py
+coverage.txt
