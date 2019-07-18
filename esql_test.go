@@ -144,10 +144,12 @@ func TestCoverage(t *testing.T) {
 			return
 		}
 	}
-
+	e.SetDefault()
 	e.SetCadence(true)
 	e.SetReplace(filter1, replace)
 	e.SetProcess(filter2, process)
+	e.SetPageSize(1000)
+	e.SetBucketNum(500)
 
 	sqls, err = readSQLs(testCasesCad)
 	if err != nil {

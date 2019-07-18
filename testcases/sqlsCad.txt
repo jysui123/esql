@@ -16,6 +16,7 @@ SELECT * FROM test0 WHERE (colD != 10 AND colB = 'bc') OR colB = 'ab'
 SELECT * FROM test0 WHERE ((colD != 10) AND (colB = 'bc' OR colB = 'ab'))
 SELECT * FROM test0 WHERE NOT colD != 10 ORDER BY colE DESC
 SELECT * FROM test0 WHERE NOT NOT colD != 10
+SELECT * FROM test0 WHERE colB LIKE 'a_b%' OR colB REGEXP '[a-c]+'
 SELECT * FROM test0 WHERE NOT NOT NOT colD != 10 ORDER BY colE
 SELECT * FROM test0 WHERE NOT colD != 10 AND colB = 'bc' OR colB = 'ab'
 SELECT * FROM test0 WHERE colD != 10 AND NOT (colB = 'bc' OR colB = 'ab')
