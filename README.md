@@ -1,4 +1,5 @@
-# ESQL: Translate SQL to Elasticsearch DSL [![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql) [![codecov](https://codecov.io/gh/jysui123/esql/branch/master/graph/badge.svg)](https://codecov.io/gh/jysui123/esql)
+# ESQL: Translate SQL to Elasticsearch DSL 
+[![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql) [![codecov](https://codecov.io/gh/jysui123/esql/branch/master/graph/badge.svg)](https://codecov.io/gh/jysui123/esql) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Use SQL to query Elasticsearch. ES V6 compatible.
 
