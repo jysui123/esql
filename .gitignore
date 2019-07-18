@@ -13,9 +13,7 @@
 
 # Testing and intermediate files
 testcases/*.txt
-!testcases/sqls.txt
-!testcases/sqlsCad.txt
-!testcases/sqlsInvalid.txt
+!testcases/sqls*.txt
 cadenceRef.go
 
 .vscode
