@@ -1,4 +1,5 @@
-# ESQL: Translate SQL to Elasticsearch DSL
+# ESQL: Translate SQL to Elasticsearch DSL [![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql)
+
 Use SQL to query Elasticsearch. ES V6 compatible.
 
 ## Supported features
