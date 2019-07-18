@@ -22,7 +22,7 @@ var testCases = `testcases/sqls.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
 var testCasesBenchmarkAgg = `testcases/sqlsBmAgg.txt`
 var testCasesBenchmarkCadence = `testcases/sqlsBmCad.txt`
-var testCasesCadence = `testcases/sqlsCadence.txt`
+var testCasesCad = `testcases/sqlsCad.txt`
 var testDsls = `testcases/dsls.txt`
 var testDslsCadence = `testcases/dslsCadence.txt`
 var testDslsPretty = `testcases/dslsPretty.txt`
@@ -112,6 +112,22 @@ func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error
 	return nil
 }
 
+func filter1(colName string) bool {
+	return strings.Contains(colName, "col")
+}
+
+func replace(colName string) (string, error) {
+	return "myCol" + colName[3:], nil
+}
+
+func filter2(colName string) bool {
+	return strings.Contains(colName, "col")
+}
+
+func process(v string) (string, error) {
+	return v, nil
+}
+
 func TestCoverage(t *testing.T) {
 	e := NewESql()
 	sqls, err := readSQLs(testCases)
@@ -123,6 +139,25 @@ func TestCoverage(t *testing.T) {
 	for i, sql := range sqls {
 		fmt.Printf("test %dth query ...\n", i+1)
 		_, _, err := e.ConvertPretty(sql)
+		if err != nil {
+			t.Errorf("%vth query fails: %v", i+1, err)
+			return
+		}
+	}
+
+	e.SetCadence(true)
+	e.SetReplace(filter1, replace)
+	e.SetProcess(filter2, process)
+
+	sqls, err = readSQLs(testCasesCad)
+	if err != nil {
+		t.Errorf("Fail to load testcasesCad")
+		return
+	}
+
+	for i, sql := range sqls {
+		fmt.Printf("test %dth query ...\n", i+1)
+		_, _, err := e.ConvertPrettyCadence(sql, "1")
 		if err != nil {
 			t.Errorf("%vth query fails: %v", i+1, err)
 			return

@@ -53,10 +53,6 @@ const (
 	StartTimeOrder       = "desc"
 )
 
-func defaultCadenceColNameReplacePolicy(colNameStr string) string {
-	return "Attr." + colNameStr
-}
-
 // DEBUG usage
 func print(v interface{}) {
 	fmt.Println("==============")
