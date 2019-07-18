@@ -283,114 +283,114 @@ func readSQLs(fileName string) ([]string, error) {
 	return sqls, nil
 }
 
-func testBenchmark(t *testing.T, choice string, round int) {
-	var e ESql
-	e.SetDefault()
-	e.SetCadence(true)
+// func testBenchmark(t *testing.T, choice string, round int) {
+// 	var e ESql
+// 	e.SetDefault()
+// 	e.SetCadence(true)
 
-	client, err := elastic.NewClient(elastic.SetURL(urlES))
-	if err != nil {
-		t.Error("Fail to create elastic client")
-	}
-	ctx := context.Background()
+// 	client, err := elastic.NewClient(elastic.SetURL(urlES))
+// 	if err != nil {
+// 		t.Error("Fail to create elastic client")
+// 	}
+// 	ctx := context.Background()
 
-	var fileName string
-	search := false
-	switch choice {
-	case "conversion":
-		fileName = testCasesBenchmarkAll
-	case "search":
-		fileName = testCasesBenchmarkAll
-		search = true
-	default:
-		t.Errorf("wrong choice")
-		return
-	}
+// 	var fileName string
+// 	search := false
+// 	switch choice {
+// 	case "conversion":
+// 		fileName = testCasesBenchmarkAll
+// 	case "search":
+// 		fileName = testCasesBenchmarkAll
+// 		search = true
+// 	default:
+// 		t.Errorf("wrong choice")
+// 		return
+// 	}
 
-	sqls, err := readSQLs(fileName)
-	if err != nil {
-		t.Errorf("Fail to open testcase file %v", fileName)
-		return
-	}
-	var dslEsql, dslElasticsql []string
-	var esqlResp, elasticsqlResp []*elastic.SearchResult
-	start := time.Now()
-	for i, sql := range sqls {
-		for k := 0; k < round; k++ {
-			dsl, _, err := e.Convert(sql)
-			if err != nil {
-				t.Errorf("Esql fail at %vth query: %v", i+1, err)
-				return
-			}
-			if k == 0 {
-				dslEsql = append(dslEsql, dsl)
-			}
-			if search {
-				if resp, err := client.Search(index).Source(dsl).Do(ctx); err == nil {
-					if k == 0 {
-						esqlResp = append(esqlResp, resp)
-					}
-				} else {
-					t.Errorf("Esql query fail at %vth query: %v", i+1, err)
-					return
-				}
-			}
-		}
-	}
-	elapsedEsql := time.Since(start)
-	start = time.Now()
-	for i, sql := range sqls {
-		for k := 0; k < round; k++ {
-			dsl, err := getCustomizedDSLFromSQL(sql, "0")
-			if err != nil {
-				t.Errorf("Elasticsql fail at %vth query", i+1)
-				return
-			}
-			if k == 0 {
-				dslElasticsql = append(dslElasticsql, dsl)
-			}
-			// fmt.Println(dsl)
-			if search {
-				if resp, err := client.Search(index).Source(dsl).Do(ctx); err == nil {
-					if k == 0 {
-						elasticsqlResp = append(elasticsqlResp, resp)
-					}
-				} else {
-					t.Errorf("Elasticsql query fail at %vth query: %v", i+1, err)
-					return
-				}
-			}
-		}
-	}
+// 	sqls, err := readSQLs(fileName)
+// 	if err != nil {
+// 		t.Errorf("Fail to open testcase file %v", fileName)
+// 		return
+// 	}
+// 	var dslEsql, dslElasticsql []string
+// 	var esqlResp, elasticsqlResp []*elastic.SearchResult
+// 	start := time.Now()
+// 	for i, sql := range sqls {
+// 		for k := 0; k < round; k++ {
+// 			dsl, _, err := e.Convert(sql)
+// 			if err != nil {
+// 				t.Errorf("Esql fail at %vth query: %v", i+1, err)
+// 				return
+// 			}
+// 			if k == 0 {
+// 				dslEsql = append(dslEsql, dsl)
+// 			}
+// 			if search {
+// 				if resp, err := client.Search(index).Source(dsl).Do(ctx); err == nil {
+// 					if k == 0 {
+// 						esqlResp = append(esqlResp, resp)
+// 					}
+// 				} else {
+// 					t.Errorf("Esql query fail at %vth query: %v", i+1, err)
+// 					return
+// 				}
+// 			}
+// 		}
+// 	}
+// 	elapsedEsql := time.Since(start)
+// 	start = time.Now()
+// 	for i, sql := range sqls {
+// 		for k := 0; k < round; k++ {
+// 			dsl, err := getCustomizedDSLFromSQL(sql, "0")
+// 			if err != nil {
+// 				t.Errorf("Elasticsql fail at %vth query", i+1)
+// 				return
+// 			}
+// 			if k == 0 {
+// 				dslElasticsql = append(dslElasticsql, dsl)
+// 			}
+// 			// fmt.Println(dsl)
+// 			if search {
+// 				if resp, err := client.Search(index).Source(dsl).Do(ctx); err == nil {
+// 					if k == 0 {
+// 						elasticsqlResp = append(elasticsqlResp, resp)
+// 					}
+// 				} else {
+// 					t.Errorf("Elasticsql query fail at %vth query: %v", i+1, err)
+// 					return
+// 				}
+// 			}
+// 		}
+// 	}
 
-	elapsedElasticsql := time.Since(start)
-	fmt.Printf("Convert %v sqls cost: esql: %v, elasticsql: %v\n", len(sqls)*round, elapsedEsql, elapsedElasticsql)
-	f, _ := os.Create(testBenchmarkDslsEsql)
-	for _, dsl := range dslEsql {
-		f.WriteString(dsl + "\n")
-	}
-	f.Close()
-	f, _ = os.Create(testBenchmarkDslsElasticsql)
-	for _, dsl := range dslElasticsql {
-		f.WriteString(dsl + "\n")
-	}
-	f.Close()
-	// for i := range esqlResp {
-	// 	if esqlResp[i].Hits.TotalHits != elasticsqlResp[i].Hits.TotalHits {
-	// 		fmt.Printf("%vth query hits does not match, esql %v, elasticsql %v\n",
-	// 			i+1, esqlResp[i].Hits.TotalHits, elasticsqlResp[i].Hits.TotalHits)
-	// 	} else {
-	// 		fmt.Printf("%vth query gets %v hits\n", i+1, elasticsqlResp[i].Hits.TotalHits)
-	// 	}
-	// }
-}
+// 	elapsedElasticsql := time.Since(start)
+// 	fmt.Printf("Convert %v sqls cost: esql: %v, elasticsql: %v\n", len(sqls)*round, elapsedEsql, elapsedElasticsql)
+// 	f, _ := os.Create(testBenchmarkDslsEsql)
+// 	for _, dsl := range dslEsql {
+// 		f.WriteString(dsl + "\n")
+// 	}
+// 	f.Close()
+// 	f, _ = os.Create(testBenchmarkDslsElasticsql)
+// 	for _, dsl := range dslElasticsql {
+// 		f.WriteString(dsl + "\n")
+// 	}
+// 	f.Close()
+// 	// for i := range esqlResp {
+// 	// 	if esqlResp[i].Hits.TotalHits != elasticsqlResp[i].Hits.TotalHits {
+// 	// 		fmt.Printf("%vth query hits does not match, esql %v, elasticsql %v\n",
+// 	// 			i+1, esqlResp[i].Hits.TotalHits, elasticsqlResp[i].Hits.TotalHits)
+// 	// 	} else {
+// 	// 		fmt.Printf("%vth query gets %v hits\n", i+1, elasticsqlResp[i].Hits.TotalHits)
+// 	// 	}
+// 	// }
+// }
 
-func TestConversionSpeed(t *testing.T) {
-	fmt.Println("Compare performance between esql and elasticsql  ... ")
-	testBenchmark(t, "conversion", 1000)
-}
+// func TestConversionSpeed(t *testing.T) {
+// 	fmt.Println("Compare performance between esql and elasticsql  ... ")
+// 	testBenchmark(t, "conversion", 1000)
+// }
 
-func TestQueryProcessingSpeed(t *testing.T) {
-	fmt.Println("Compare performance dsl processing in ES server between esql and elasticsql  ... ")
-	testBenchmark(t, "search", 100)
-}
+// func TestQueryProcessingSpeed(t *testing.T) {
+// 	fmt.Println("Compare performance dsl processing in ES server between esql and elasticsql  ... ")
+// 	testBenchmark(t, "search", 100)
+// }
