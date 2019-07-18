@@ -12,10 +12,9 @@
 *.out
 
 # Testing and intermediate files
-testcases/dsl*.txt
-testcases/dummy.txt
-testcases/sqlsBmCad.txt
-testcases/sqls_invalid.txt
+testcases/*.txt
+!testcases/sqls.txt
+cadenceRef.go
 
 .vscode
 .DS_Store
