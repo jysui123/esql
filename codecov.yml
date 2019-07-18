@@ -1,7 +1,0 @@
-ignore:
-  - coverage.txt
-  - cadencesql.go
-  - *.yml
-  - *.md
-  - .gitigore
-  - *.sh
