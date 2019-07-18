@@ -14,7 +14,6 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 - [x] special handling for cadence visibility
 - [x] pagination (search after)
 - [ ] JOIN
-- [ ] aggregation(DISTINCT colName)
 - [ ] nested queries
 - [ ] arithmetics and functions
 - [ ] comparison between colNames (e.g. colA < colB)
@@ -71,7 +70,7 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 
 Features not covered yet:
 - `LIKE`, `REGEXP` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
-- some aggregations are not thoroughly tested since ES's sql api does not support them well
+- some aggregations are tested by manual check since ES's sql api does not support them well
 
 To run test locally:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip

@@ -110,6 +110,24 @@ func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error
 	return nil
 }
 
+func TestCoverage(t *testing.T) {
+	e := NewESql()
+	sqls, err := readSQLs(testCases)
+	if err != nil {
+		t.Errorf("Fail to load testcases")
+		return
+	}
+
+	for i, sql := range sqls {
+		fmt.Printf("test %dth query ...\n", i+1)
+		_, _, err := e.ConvertPretty(sql)
+		if err != nil {
+			t.Errorf("%vth query fails: %v", i+1, err)
+			return
+		}
+	}
+}
+
 func TestSQL(t *testing.T) {
 	fmt.Println("Test SQLs ...")
 
