@@ -91,12 +91,12 @@ func compareResp(respES *elastic.SearchResult, resp *elastic.SearchResult) error
 	fmt.Printf("\tget %v documents, document number matches\n", respES.Hits.TotalHits)
 
 	docIDES := make(map[string]int)
-	if respES.Hits.TotalHits > 0 {
+	if respES.TotalHits() > 0 {
 		for _, hit := range respES.Hits.Hits {
 			docIDES[hit.Id]++
 		}
 		// if orderby is specified, es sql dsl won't return document id
-		if int64(len(docIDES)) < respES.Hits.TotalHits {
+		if int64(len(docIDES)) < respES.TotalHits() {
 			return nil
 		}
 		for _, hit := range resp.Hits.Hits {
