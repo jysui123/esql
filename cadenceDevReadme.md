@@ -50,3 +50,11 @@ if err == nil {
     fmt.Println(dsl)
 }
 ~~~~
+
+## Testing
+To setup local testing environment:
+- start cassandra service locally. Please refer to [Cadence](https://github.com/uber/cadence) readme.
+- start zookeeper and kafka service locally. Here is a [referecne](https://kafka.apache.org/quickstart).
+- start elasticsearch and kibana service locally.
+- start a cadence worker by `./bin/helloworld -m worker` under cadence directory.
+- start cadence service locally. Please refer to [Cadence](https://github.com/uber/cadence) readme.

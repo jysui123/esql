@@ -35,9 +35,9 @@ var testBenchmarkCntEsql = `testcases/dslsBmEsqlCnt.txt`
 var testBenchmarkCntElasticsql = `testcases/dslsBmElasticsqlCnt.txt`
 var groundTruth = ``
 var urlES = "http://localhost:9200"
-var url = "http://localhost:9200/test0/_search"
+var url = "http://localhost:9200/test1/_search"
 var urlSQL = "http://localhost:9200/_xpack/sql/translate"
-var index = "test0"
+var index = "test1"
 var notTestedKeywords = []string{"LIMIT", "LIKE", "REGEX"}
 
 func compareRespGroup(respES *elastic.SearchResult, resp *elastic.SearchResult) error {

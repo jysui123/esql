@@ -1,4 +1,4 @@
-# ESQL: Translate SQL to Elasticsearch DSL 
+# ESQL: Translate SQL to Elasticsearch DSL
 [![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql) [![codecov](https://codecov.io/gh/jysui123/esql/branch/master/graph/badge.svg)](https://codecov.io/gh/jysui123/esql) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
 
 Use SQL to query Elasticsearch. ES V6 compatible.
@@ -62,6 +62,7 @@ if err == nil {
     fmt.Println(dsl)
 }
 ~~~~
+For Cadence usage, refer to [this](https://github.com/jysui123/esql/blob/master/cadenceDevReadme.md) link.
 
 
 ## Testing
@@ -69,19 +70,24 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 - using elasticsearch's SQL translate API to translate sql to dsl
 - using our library to convert sql to dsl
 - query local elasticsearch server with both dsls, check the results are identical
+However, since ES's SQL api is still experimental, there are many features not supported well. For such queries, testing is mannual.
 
 Features not covered yet:
 - `LIKE`, `REGEXP` keyword: ES V6.5's sql api does not support regex search but only wildcard (only support shell wildcard `%` and `_`)
 - some aggregations are tested by manual check since ES's sql api does not support them well
 
 To run test locally:
-- download elasticsearch v6.5 (optional: kibana v6.5) and unzip
+- download elasticsearch v6.5 (optional: kibana v6.5) and unzip them
 - run `chmod u+x start_service.sh test.sh`
 - run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server (by default, elasticsearch listens port 9200, kibana listens port 5600)
-- optional: modify `sqls.txt` to add custom SQL queries as test cases
-- run `python gen_test_date.py -dcmi <number of documents> <missingRate>` to customize testing data set
-- run `./test.sh` to run all the test cases
+- run `python gen_test_date.py -dmi 1 1000 20` to insert 1000 documents to the local es
+- run `./test.sh TestSQL` to run all the test cases in `/testcases/sqls.txt`
 - generated dsls are stored in `dslsPretty.txt` for reference
+
+To customize test cases:
+- modify `testcases/sqls.txt`
+- run `python gen_test_date.py -h` for guides on how to insert custom data into your lcoal es
+- invalid query test cases are in `testcases/sqlsInvalid.txt`
 
 
 ## ES V2.x vs ES V6.5
@@ -103,7 +109,7 @@ To run test locally:
 
 
 ## Current Issue
-- parsing issue w/ time format
+- parsing issue w/ date datatype in nested field
 
 
 ## Acknowledgement
