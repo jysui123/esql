@@ -70,6 +70,7 @@ We are using elasticsearch's SQL translate API as a reference in testing. Testin
 - using elasticsearch's SQL translate API to translate sql to dsl
 - using our library to convert sql to dsl
 - query local elasticsearch server with both dsls, check the results are identical    
+
 However, since ES's SQL api is still experimental, there are many features not supported well. For such queries, testing is mannual.
 
 Features not covered yet:
