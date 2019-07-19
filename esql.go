@@ -85,7 +85,7 @@ func (e *ESql) SetBucketNum(bucketNumArg int) {
 // Transform sql to elasticsearch dsl, and prettify the output json
 //
 // usage:
-//  - dsl, sortField, err := e.ConvertPretty(sql, domainID, pageParam1, pageParam2, ...)
+//  - dsl, sortField, err := e.ConvertPretty(sql, pageParam1, pageParam2, ...)
 //
 // arguments:
 //  - sql: the sql query needs conversion in string format
@@ -113,7 +113,7 @@ func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string,
 // Transform sql to elasticsearch dsl string
 //
 // usage:
-//  - dsl, sortField, err := e.Convert(sql, domainID, pageParam1, pageParam2, ...)
+//  - dsl, sortField, err := e.Convert(sql, pageParam1, pageParam2, ...)
 //
 // arguments:
 //  - sql: the sql query needs conversion in string format
