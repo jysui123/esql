@@ -182,6 +182,7 @@ func TestCoverage(t *testing.T) {
 			t.Errorf("%vth query fails: %v", i+1, err)
 			return
 		}
+		fmt.Printf("%v\n", err)
 	}
 
 	sqls, err = readSQLs(testCasesInvalidCad)
@@ -197,6 +198,7 @@ func TestCoverage(t *testing.T) {
 			t.Errorf("%vth query should fail but not", i+1)
 			return
 		}
+		fmt.Printf("%v\n", err)
 	}
 }
 
