@@ -134,7 +134,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 				orderBySlice = append(orderBySlice, cadenceOrderStartTime)
 				sortField = append(sortField, StartTime)
 			case 1: // user should not use tieBreaker to sort
-				if orderBySlice[0] == TieBreaker {
+				if sortField[0] == TieBreaker {
 					err = fmt.Errorf("esql: Cadence does not allow user sort by RunID")
 					return "", nil, err
 				}
