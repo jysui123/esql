@@ -80,13 +80,13 @@ To run test locally:
 - download elasticsearch v6.5 (optional: kibana v6.5) and unzip them
 - run `chmod u+x start_service.sh test.sh`
 - run `./start_service.sh <elasticsearch_path> <kibana_path>` to start a local elasticsearch server (by default, elasticsearch listens port 9200, kibana listens port 5600)
-- run `python gen_test_date.py -dmi 1 1000 20` to insert 1000 documents to the local es
+- run `python gen_test_data.py -dmi 1 1000 20` to insert 1000 documents to the local es
 - run `./test.sh TestSQL` to run all the test cases in `/testcases/sqls.txt`
 - generated dsls are stored in `dslsPretty.txt` for reference
 
 To customize test cases:
 - modify `testcases/sqls.txt`
-- run `python gen_test_date.py -h` for guides on how to insert custom data into your lcoal es
+- run `python gen_test_data.py -h` for guides on how to insert custom data into your lcoal es
 - invalid query test cases are in `testcases/sqlsInvalid.txt`
 
 
