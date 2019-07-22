@@ -20,7 +20,7 @@ cadenceRef.go
 .DS_Store
 
 # dependencies
-vendor
+*vendor*
 
 # others
 query_test.py
