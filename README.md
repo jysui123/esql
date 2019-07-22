@@ -5,6 +5,7 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 
 ## Supported features
 - [x] =, !=, <, >, <=, >=, <>, ()
+- [x] comparison between colNames (e.g. colA < colB)
 - [x] AND, OR, NOT
 - [x] LIKE, IN, REGEX, IS NULL, BETWEEN
 - [x] LIMIT, SIZE, DISTINCT
@@ -17,7 +18,6 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 - [ ] JOIN
 - [ ] nested queries
 - [ ] arithmetics and functions
-- [ ] comparison between colNames (e.g. colA < colB)
 
 
 ## Usage
@@ -106,6 +106,7 @@ To customize test cases:
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
 - ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
 - To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
+- Comparison between columns can be potentially slow since it uses scripting query and thus not able to take advantage of reverse index
 
 
 ## Current Issue
@@ -117,6 +118,7 @@ This project is originated from [elasticsql](https://github.com/cch123/elasticsq
 
 |Item|detail|
 |:-:|:-:|
+|comparison|support comparison between different columns|
 |keyword IS|support standard SQL keywords IS NULL, IS NOT NULL for missing check|
 |keyword NOT|support NOT, convert NOT recursively since elasticsearch's must_not is not the same as boolean operator NOT in sql|
 |keyword LIKE|using "wildcard" tag, support SQL wildcard '%' and '_'|
