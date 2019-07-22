@@ -3,11 +3,17 @@ SELECT * FROM test1 ORDER BY colE, colD DESC LIMIT 10 OFFSET 4
 SELECT * FROM test1 WHERE colB = 'ab'
 SELECT * FROM test1 WHERE colB = colBB
 SELECT * FROM test1 WHERE colB = 'ab' AND colB = colBB
+SELECT * FROM test1 WHERE colB = 'ab' AND colB != colBB
 SELECT * FROM test1 WHERE colD = 10
 SELECT * FROM test1 WHERE ( NOT colD = 10)
 SELECT * FROM test1 WHERE ( NOT (colD = 10))
 SELECT * FROM test1 WHERE colD != 10 ORDER BY colD ASC LIMIT 14
 SELECT * FROM test1 WHERE ( NOT colD != 10)
+SELECT * FROM test1 WHERE colD + 1 > 9
+SELECT * FROM test1 WHERE colB = colBB AND 2 * colD > 8+2
+SELECT * FROM test1 WHERE colB + 'c' = colA
+SELECT * FROM test1 WHERE colB + "c" = colA
+SELECT * FROM test1 WHERE `colB` + 'c' = colA
 SELECT * FROM test1 WHERE ((colD != 10))
 SELECT * FROM test1 WHERE colB = 'ab' AND ExecutionTime = 2016 AND colB = 'ab'
 SELECT * FROM test1 WHERE colB = 'ab' OR colD = 10

@@ -354,18 +354,11 @@ func (e *ESql) convertIsExpr(expr sqlparser.Expr, parent sqlparser.Expr, not boo
 
 func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr, not bool) (string, error) {
 	// extract lhs, and check lhs is a colName
+	var err error
+	scriptQuery := false
 	comparisonExpr := expr.(*sqlparser.ComparisonExpr)
-	lhsExpr := comparisonExpr.Left
-	lhs, ok := lhsExpr.(*sqlparser.ColName)
-	if !ok {
-		return "", fmt.Errorf("esql: invalid comparison expression, lhs must be a column name")
-	}
-
-	lhsStr, err := e.convertColName(lhs)
-	if err != nil {
-		return "", err
-	}
-
+	lhsExpr, rhsExpr := comparisonExpr.Left, comparisonExpr.Right
+	var lhsStr, rhsStr, dsl string
 	// get operator
 	op := comparisonExpr.Operator
 	if not {
@@ -376,12 +369,12 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		op = oppositeOperator[op]
 	}
 
-	// extract rhs
-	rhsExpr := comparisonExpr.Right
-	var rhsStr, dsl string
+	if _, ok := lhsExpr.(*sqlparser.ColName); !ok {
+		scriptQuery = true
+	}
 	switch rhsExpr.(type) {
 	case *sqlparser.SQLVal, sqlparser.ValTuple:
-		rhsStr, err = e.convertValExpr(rhsExpr)
+		rhsStr, err = e.convertValExpr(rhsExpr, false)
 		if err != nil {
 			return "", err
 		}
@@ -389,21 +382,50 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		if err != nil {
 			return "", err
 		}
-	case *sqlparser.ColName:
-		rhs, _ := rhsExpr.(*sqlparser.ColName)
-		rhsStr, err = e.convertColName(rhs)
+	default:
+		scriptQuery = true
+	}
+
+	// use painless scripting query here
+	if scriptQuery {
+		lhsStr, err = e.convertToScript(lhsExpr)
+		rhsStr, err = e.convertToScript(rhsExpr)
 		if err != nil {
 			return "", err
 		}
-		// if rhs is a colName, use painless scripting language
-		op = op2PainlessOp[op]
-		script := fmt.Sprintf(`doc['%v'].value %v doc['%v'].value`, lhsStr, op, rhsStr)
+		op, ok := op2PainlessOp[op]
+		if !ok {
+			err = fmt.Errorf("esql: not supported painless operator")
+			return "", err
+		}
+		script := fmt.Sprintf(`%v %v %v`, lhsStr, op, rhsStr)
 		dsl = fmt.Sprintf(`{"bool": {"filter": {"script": {"script": {"source": "%v", "lang": "painless"}}}}}`, script)
 		return dsl, nil
-	default:
-		err := fmt.Errorf("unsupported comparion rhs type")
+	}
+
+	lhs := lhsExpr.(*sqlparser.ColName)
+	lhsStr, err = e.convertColName(lhs)
+	if err != nil {
 		return "", err
 	}
+
+	// // extract rhs
+	// switch rhsExpr.(type) {
+	// case *sqlparser.SQLVal, sqlparser.ValTuple:
+
+	// case *sqlparser.ColName:
+	// 	rhs, _ := rhsExpr.(*sqlparser.ColName)
+	// 	rhsStr, err = e.convertColName(rhs)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// 	// if rhs is a colName, use painless scripting language
+	//
+	// 	return dsl, nil
+	// default:
+	// 	err := fmt.Errorf("unsupported comparion rhs type")
+	// 	return "", err
+	// }
 
 	// generate dsl according to operator
 	switch op {
@@ -448,11 +470,13 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 	return dsl, nil
 }
 
-func (e *ESql) convertValExpr(expr sqlparser.Expr) (dsl string, err error) {
+func (e *ESql) convertValExpr(expr sqlparser.Expr, script bool) (dsl string, err error) {
 	switch expr.(type) {
 	case *sqlparser.SQLVal:
 		dsl = sqlparser.String(expr)
-		dsl = strings.Trim(dsl, `'`)
+		if !script {
+			dsl = strings.Trim(dsl, `'`)
+		}
 	// ValTuple is not a pointer from sqlparser
 	case sqlparser.ValTuple:
 		dsl = sqlparser.String(expr)
