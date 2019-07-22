@@ -72,7 +72,7 @@ if err == nil {
 ### Pagination
 ESQL support 2 kinds of pagination: FROM keyword and ES search_after.
 For SQL FROM keyword: the same as SQL syntax. Be careful, **ES only support a page smaller than 10k**, if your offset is large than 10k, search_after is necessary.
-For search_after: Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order. Below shows an example.
+For search_after: Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order.
 Below shows and example.
 ~~~~go
 // first page
@@ -82,12 +82,12 @@ dsl_page1, sortFields, err := e.ConvertPretty(sql_page1)
 
 // second page
 // 1. Use FROM to retrieve the 2nd page
-sql_page2_FROM = "SELECT * FROM myTable ORDER BY colA, colB LIMIT 10 FROM 10"
+sql_page2_FROM := "SELECT * FROM myTable ORDER BY colA, colB LIMIT 10 FROM 10"
 dsl_page2_FROM, sortFields, err := e.ConvertPretty(sql_page2_FROM)
 
 // 2. Use search_after to retrieve the 2nd page
 // we can use sortFields and the query result from page 1 to get the page tokens
-sql_page2_search_after = sql_page1
+sql_page2_search_after := sql_page1
 page_token_colA := "123"
 page_token_colB := "bbc"
 dsl_page2_search_after, sortFields, err := e.ConvertPretty(sql_page2_search_after, page_colA, page_colB)
