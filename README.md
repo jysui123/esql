@@ -41,7 +41,6 @@ ESQL support API `ProcessQueryValue` to register custom policy for value process
 Below shows an example.
 ~~~~go
 sql := "SELECT colA FROM myTable WHERE colB < 10 AND dateTime = '2015-01-01T02:59:59Z'"
-domainID := "CadenceSampleDomain"
 // custom policy that change colName like "col.." to "myCol.."
 func myKeyFilter(colName string) bool {
     return strings.HasPrefix(colName, "col")
