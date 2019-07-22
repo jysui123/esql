@@ -399,7 +399,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 			return "", err
 		}
 		script := fmt.Sprintf(`%v %v %v`, lhsStr, op, rhsStr)
-		dsl = fmt.Sprintf(`{"bool": {"filter": {"script": {"script": {"source": "%v", "lang": "painless"}}}}}`, script)
+		dsl = fmt.Sprintf(`{"bool": {"filter": {"script": {"script": {"source": "%v"}}}}}`, script)
 		return dsl, nil
 	}
 
