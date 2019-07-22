@@ -81,6 +81,7 @@ schema1 = {
             "properties": {
                 "colA": {"type": "keyword"},
                 "colB": {"type": "keyword"},
+                "colBB": {"type": "keyword"},
                 "colC": {"type": "keyword"},
                 "colD": {"type": "long"},
                 "colE": {"type": "double"},
@@ -143,6 +144,7 @@ def genPayload(tableName, missing=20):
     elif tableName == "test1":
         payload['colA'] = genRandStr()
         payload['colB'] = genRandStr("ab", 2)
+        payload['colBB'] = genRandStr("ab", 2)
         payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
         payload['colD'] = random.randint(0, 20)
         payload['colE'] = random.uniform(0, 20)

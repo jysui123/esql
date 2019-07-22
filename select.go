@@ -366,17 +366,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		return "", err
 	}
 
-	// extract rhs
-	rhsExpr := comparisonExpr.Right
-	rhsStr, err := e.convertValExpr(rhsExpr)
-	if err != nil {
-		return "", err
-	}
-	rhsStr, err = e.filterAndProcess(lhsStr, rhsStr)
-	if err != nil {
-		return "", err
-	}
-
+	// get operator
 	op := comparisonExpr.Operator
 	if not {
 		if _, exist := oppositeOperator[op]; !exist {
@@ -386,8 +376,36 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		op = oppositeOperator[op]
 	}
 
+	// extract rhs
+	rhsExpr := comparisonExpr.Right
+	var rhsStr, dsl string
+	switch rhsExpr.(type) {
+	case *sqlparser.SQLVal, sqlparser.ValTuple:
+		rhsStr, err = e.convertValExpr(rhsExpr)
+		if err != nil {
+			return "", err
+		}
+		rhsStr, err = e.filterAndProcess(lhsStr, rhsStr)
+		if err != nil {
+			return "", err
+		}
+	case *sqlparser.ColName:
+		rhs, _ := rhsExpr.(*sqlparser.ColName)
+		rhsStr, err = e.convertColName(rhs)
+		if err != nil {
+			return "", err
+		}
+		// if rhs is a colName, use painless scripting language
+		op = op2PainlessOp[op]
+		script := fmt.Sprintf(`doc['%v'].value %v doc['%v'].value`, lhsStr, op, rhsStr)
+		dsl = fmt.Sprintf(`{"bool": {"filter": {"script": {"script": {"source": "%v", "lang": "painless"}}}}}`, script)
+		return dsl, nil
+	default:
+		err := fmt.Errorf("unsupported comparion rhs type")
+		return "", err
+	}
+
 	// generate dsl according to operator
-	var dsl string
 	switch op {
 	case "=":
 		dsl = fmt.Sprintf(`{"term": {"%v": "%v"}}`, lhsStr, rhsStr)
