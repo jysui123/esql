@@ -62,9 +62,9 @@ func myValueProcess(timeStr string) (string, error) {
 // "SELECT myColA FROM myTable WHERE myColB < 10 AND dateTime = '1561678568048000000'
 // in which the time is in unix nano format
 e := NewESql()
-e.ProcessQueryKey(myKeyFilter, myKeyProcess)         // set up filtering policy
-e.ProcessQueryValue(myValueFilter, myValueProcess)     // set up process policy
-dsl, _, err := e.ConvertPretty(sql)             // convert sql to dsl
+e.ProcessQueryKey(myKeyFilter, myKeyProcess)            // set up macro for key
+e.ProcessQueryValue(myValueFilter, myValueProcess)      // set up macro for value
+dsl, _, err := e.ConvertPretty(sql)                     // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
 }
