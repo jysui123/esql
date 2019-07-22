@@ -18,7 +18,7 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sql.txt`
+var testCases = `testcases/sqls.txt`
 var testCasesInvalid = `testcases/sqlsInvalid.txt`
 var testCasesInvalidCad = `testcases/sqlsInvalidCad.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
@@ -164,8 +164,8 @@ func TestCoverage(t *testing.T) {
 
 	e.SetDefault()
 	e.SetCadence(true)
-	e.SetReplace(filter1, replace)
-	e.SetProcess(filter2, process)
+	e.ProcessQueryKey(filter1, replace)
+	e.ProcessQueryValue(filter2, process)
 	e.SetPageSize(1000)
 	e.SetBucketNum(500)
 

@@ -160,7 +160,7 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 			// ? should we convert funcExpr.Exprs to colname?
 			aggTargetStr := sqlparser.String(funcExpr.Exprs)
 			aggTargetStr = strings.Trim(aggTargetStr, "`")
-			aggTargetStr, err := e.filterAndReplace(aggTargetStr)
+			aggTargetStr, err := e.keyProcess(aggTargetStr)
 			if err != nil {
 				return nil, nil, nil, nil, nil, err
 			}
@@ -220,7 +220,7 @@ func (e *ESql) getAggSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []
 		aggNameStr := strings.ToLower(funcExpr.Name.String())
 		aggTargetStr := sqlparser.String(funcExpr.Exprs)
 		aggTargetStr = strings.Trim(aggTargetStr, "`")
-		aggTargetStr, err := e.filterAndReplace(aggTargetStr)
+		aggTargetStr, err := e.keyProcess(aggTargetStr)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

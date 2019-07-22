@@ -17,8 +17,8 @@ func (e *ESql) SetCadence(cadenceArg bool) {
 
 // ConvertPrettyCadence ...
 // convert sql to es dsl, for cadence usage
-func (e *ESql) ConvertPrettyCadence(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
-	dsl, sortField, err = e.ConvertCadence(sql, domainID, pagination...)
+func (e *ESql) ConvertPrettyCadence(sql string, domainID string, pagination ...interface{}) (dsl string, sortFields []string, err error) {
+	dsl, sortFields, err = e.ConvertCadence(sql, domainID, pagination...)
 	if err != nil {
 		return "", nil, err
 	}
@@ -28,12 +28,12 @@ func (e *ESql) ConvertPrettyCadence(sql string, domainID string, pagination ...i
 	if err != nil {
 		return "", nil, err
 	}
-	return string(prettifiedDSLBytes.Bytes()), sortField, err
+	return string(prettifiedDSLBytes.Bytes()), sortFields, err
 }
 
 // ConvertCadence ...
 // convert sql to es dsl, for cadence usage
-func (e *ESql) ConvertCadence(sql string, domainID string, pagination ...interface{}) (dsl string, sortField []string, err error) {
+func (e *ESql) ConvertCadence(sql string, domainID string, pagination ...interface{}) (dsl string, sortFields []string, err error) {
 	if !e.cadence {
 		err = fmt.Errorf(`esql: cadence option not turned on`)
 		return "", nil, err
@@ -46,7 +46,7 @@ func (e *ESql) ConvertCadence(sql string, domainID string, pagination ...interfa
 	//sql valid, start to handle
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		dsl, sortField, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
+		dsl, sortFields, err = e.convertSelect(*(stmt.(*sqlparser.Select)), domainID, pagination...)
 	default:
 		err = fmt.Errorf(`esql: Queries other than select not supported`)
 	}
@@ -54,5 +54,5 @@ func (e *ESql) ConvertCadence(sql string, domainID string, pagination ...interfa
 	if err != nil {
 		return "", nil, err
 	}
-	return dsl, sortField, nil
+	return dsl, sortFields, nil
 }

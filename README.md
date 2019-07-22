@@ -14,7 +14,7 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 - [x] AVG, MAX, MIN, SUM
 - [x] GROUP BY, ORDER BY
 - [x] HAVING
-- [x] column name selection filtering and replacing
+- [x] query key value macro (see usage)
 - [x] pagination (search after)
 - [ ] pagination for aggregation
 - [ ] functions
@@ -23,7 +23,8 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 
 
 ## Usage
-Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs. Below shows a simple usage example:
+Please refer to code and comments in `esql.go`. `esql.go` contains all the apis that an outside user needs.
+### Basic Usage
 ~~~~go
 sql := `SELECT COUNT(*), MAX(colA) FROM myTable WHERE colB < 10 GROUP BY colC HAVING COUNT(*) > 20`
 e := NewESql()
@@ -32,26 +33,27 @@ if err == nil {
     fmt.Println(dsl)
 }
 ~~~~
-ESQL support API `SetReplace` to register custom policy for colName replacement. It accepts 2 functions, the first function determines whether a colName is to be replaced, the second specifies how to do the replacement. Use case: user has custom field `field`, but to resolve confict, server stores the field as `Custom.field`. `SetReplace` API can automatically do the conversion.
+### Custom Query Macro
+ESQL support API `ProcessQueryKey` to register custom policy for colName replacement. It accepts 2 functions, the first function determines whether a colName is to be replaced, the second specifies how to do the replacement. Use case: user has custom field `field`, but to resolve confict, server stores the field as `Custom.field`. `ProcessQueryKey` API can automatically do the conversion.
 
-ESQL support API `SetProcess` to register custom policy for value processing. It accepts 2 functions, the first function determines whether a value of a colName is to be processed, the second specifies how to do the processing. Use case: user want to query time in readable format, but server stores time as an integer (unix nano). `SetProcess` API can automatically do the conversion.
+ESQL support API `ProcessQueryValue` to register custom policy for value processing. It accepts 2 functions, the first function determines whether a value of a colName is to be processed, the second specifies how to do the processing. Use case: user want to query time in readable format, but server stores time as an integer (unix nano). `ProcessQueryValue` API can automatically do the conversion.
 
 Below shows an example.
 ~~~~go
 sql := "SELECT colA FROM myTable WHERE colB < 10 AND dateTime = '2015-01-01T02:59:59Z'"
 domainID := "CadenceSampleDomain"
 // custom policy that change colName like "col.." to "myCol.."
-func myFilter1(colName string) bool {
+func myKeyFilter(colName string) bool {
     return strings.HasPrefix(colName, "col")
 }
-func myReplace(colName string) (string, error) {
+func myKeyProcess(colName string) (string, error) {
     return "myCol"+colName[3:], nil
 }
 // custom policy that convert formatted time string to unix nano
-func myFilter2(colName string) bool {
+func myValueFilter(colName string) bool {
     return strings.Contains(colName, "Time") || strings.Contains(colName, "time")
 }
-func myProcess(timeStr string) (string, error) {
+func myValueProcess(timeStr string) (string, error) {
     // convert formatted time string to unix nano integer
     parsedTime, _ := time.Parse(defaultDateTimeFormat, timeStr)
     return fmt.Sprintf("%v", parsedTime.UnixNano()), nil
@@ -60,25 +62,36 @@ func myProcess(timeStr string) (string, error) {
 // "SELECT myColA FROM myTable WHERE myColB < 10 AND dateTime = '1561678568048000000'
 // in which the time is in unix nano format
 e := NewESql()
-e.SetReplace(myFilter1, myReplace)     // set up filtering policy
-e.SetProcess(myFilter2, myProcess)     // set up process policy
-dsl, _, err := e.ConvertPretty(sql)    // convert sql to dsl
+e.ProcessQueryKey(myKeyFilter, myKeyProcess)         // set up filtering policy
+e.ProcessQueryValue(myValueFilter, myValueProcess)     // set up process policy
+dsl, _, err := e.ConvertPretty(sql)             // convert sql to dsl
 if err == nil {
     fmt.Println(dsl)
 }
 ~~~~
-ESQL support ES search_after for pagination. Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order. Below shows an example.
+### Pagination
+ESQL support 2 kinds of pagination: FROM keyword and ES search_after.
+For SQL FROM keyword: the same as SQL syntax. Be careful, **ES only support a page smaller than 10k**, if your offset is large than 10k, search_after is necessary.
+For search_after: Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order. Below shows an example.
+Below shows and example.
 ~~~~go
-sql := "SELECT * FROM myTable ORDER BY colA, colB LIMIT 10"
-page_colA := "123"
-page_colB := "bbc"
+// first page
+sql_page1 := "SELECT * FROM myTable ORDER BY colA, colB LIMIT 10"
 e := NewESql()
-dsl, sortFields, err := e.ConvertPretty(sql, page_colA, page_colB)
-if err == nil {
-    fmt.Println(dsl)
-}
+dsl_page1, sortFields, err := e.ConvertPretty(sql_page1)
+
+// second page
+// 1. Use FROM to retrieve the 2nd page
+sql_page2_FROM = "SELECT * FROM myTable ORDER BY colA, colB LIMIT 10 FROM 10"
+dsl_page2_FROM, sortFields, err := e.ConvertPretty(sql_page2_FROM)
+
+// 2. Use search_after to retrieve the 2nd page
+// we can use sortFields and the query result from page 1 to get the page tokens
+sql_page2_search_after = sql_page1
+page_token_colA := "123"
+page_token_colB := "bbc"
+dsl_page2_search_after, sortFields, err := e.ConvertPretty(sql_page2_search_after, page_colA, page_colB)
 ~~~~
-Alternatively, LIMIT, FROM can be used for pagination too.
 
 For Cadence usage, refer to [this link](cadenceDevReadme.md).
 
@@ -117,7 +130,7 @@ To customize test cases:
 
 
 ## Attentions
-- If you want to apply aggregation on some fields, they should not be in type `text` in ES (set type of a field by put mapping to your table)
+- If you want to apply aggregation on some fields, they should not be in type `text` in ES
 - `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
 - ES SQL API and esql do not support `SELECT DISTINCT`, a workaround is to query something like `SELECT * FROM table GROUP BY colName`
 - ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort

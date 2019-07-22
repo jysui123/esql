@@ -378,7 +378,7 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 		if err != nil {
 			return "", err
 		}
-		rhsStr, err = e.filterAndProcess(lhsStr, rhsStr)
+		rhsStr, err = e.valueProcess(lhsStr, rhsStr)
 		if err != nil {
 			return "", err
 		}
@@ -490,7 +490,7 @@ func (e *ESql) convertValExpr(expr sqlparser.Expr, script bool) (dsl string, err
 func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	// here we garuantee colName is of type *ColName
 	colNameStr := sqlparser.String(colName)
-	replacedColNameStr, err := e.filterAndReplace(colNameStr)
+	replacedColNameStr, err := e.keyProcess(colNameStr)
 	if err != nil {
 		return "", err
 	}
@@ -498,9 +498,9 @@ func (e *ESql) convertColName(colName *sqlparser.ColName) (string, error) {
 	return replacedColNameStr, nil
 }
 
-func (e *ESql) filterAndReplace(target string) (string, error) {
-	if e.filterReplace != nil && e.filterReplace(target) && e.replace != nil {
-		target, err := e.replace(target)
+func (e *ESql) keyProcess(target string) (string, error) {
+	if e.filterKey != nil && e.filterKey(target) && e.processKey != nil {
+		target, err := e.processKey(target)
 		if err != nil {
 			return "", err
 		}
@@ -509,9 +509,9 @@ func (e *ESql) filterAndReplace(target string) (string, error) {
 	return target, nil
 }
 
-func (e *ESql) filterAndProcess(colName string, value string) (string, error) {
-	if e.filterProcess != nil && e.filterProcess(colName) && e.process != nil {
-		value, err := e.process(value)
+func (e *ESql) valueProcess(colName string, value string) (string, error) {
+	if e.filterValue != nil && e.filterValue(colName) && e.processValue != nil {
+		value, err := e.processValue(value)
 		if err != nil {
 			return "", err
 		}

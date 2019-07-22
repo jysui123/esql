@@ -8,25 +8,25 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-// Replace ...
+// ProcessFunc ...
 // esql use replace function to apply user colName or column value replacing policy
-type Replace func(string) (string, error)
+type ProcessFunc func(string) (string, error)
 
-// Filter ...
+// FilterFunc ...
 // esql use filter function decide whether the policy will be applied to the column
 // only accept column names that filter(colName) == true
-type Filter func(string) bool
+type FilterFunc func(string) bool
 
 // ESql ...
 // ESql is used to hold necessary information that required in parsing
 type ESql struct {
-	filterReplace Filter  // select the column we want to replace name
-	filterProcess Filter  // select the column we want to process value
-	replace       Replace // if selected by filterReplace, change the column name
-	process       Replace // if selected by filterProcess, change the column value
-	cadence       bool
-	pageSize      int
-	bucketNumber  int
+	filterKey    FilterFunc  // select the column we want to replace name
+	filterValue  FilterFunc  // select the column we want to process value
+	processKey   ProcessFunc // if selected by filterReplace, change the column name
+	processValue ProcessFunc // if selected by filterProcess, change the column value
+	cadence      bool
+	pageSize     int
+	bucketNumber int
 }
 
 // SetDefault ...
@@ -36,37 +36,37 @@ func (e *ESql) SetDefault() {
 	e.pageSize = DefaultPageSize
 	e.bucketNumber = DefaultBucketNumber
 	e.cadence = false
-	e.replace = nil
-	e.process = nil
-	e.filterReplace = nil
-	e.filterProcess = nil
+	e.filterKey = nil
+	e.filterValue = nil
+	e.processKey = nil
+	e.processValue = nil
 }
 
 // NewESql ... return a new default ESql
 func NewESql() *ESql {
 	return &ESql{
-		pageSize:      DefaultPageSize,
-		bucketNumber:  DefaultBucketNumber,
-		cadence:       false,
-		process:       nil,
-		replace:       nil,
-		filterReplace: nil,
-		filterProcess: nil,
+		pageSize:     DefaultPageSize,
+		bucketNumber: DefaultBucketNumber,
+		cadence:      false,
+		processKey:   nil,
+		processValue: nil,
+		filterKey:    nil,
+		filterValue:  nil,
 	}
 }
 
-// SetReplace ... set up user specified column name replacement policy
+// ProcessQueryKey ... set up user specified column name replacement policy
 // should not be called if there is potential race condition
-func (e *ESql) SetReplace(filterArg Filter, replaceArg Replace) {
-	e.filterReplace = filterArg
-	e.replace = replaceArg
+func (e *ESql) ProcessQueryKey(filterArg FilterFunc, replaceArg ProcessFunc) {
+	e.filterKey = filterArg
+	e.processKey = replaceArg
 }
 
-// SetProcess ... set up user specified column value processing policy
+// ProcessQueryValue ... set up user specified column value processing policy
 // should not be called if there is potential race condition
-func (e *ESql) SetProcess(filterArg Filter, processArg Replace) {
-	e.filterProcess = filterArg
-	e.process = processArg
+func (e *ESql) ProcessQueryValue(filterArg FilterFunc, processArg ProcessFunc) {
+	e.filterValue = filterArg
+	e.processValue = processArg
 }
 
 // SetPageSize ... set the number of documents returned in a non-aggregation query
