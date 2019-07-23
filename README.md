@@ -6,7 +6,7 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 ## Supported features
 - [x] =, !=, <, >, <=, >=, <>, ()
 - [x] comparison with arithmetics (e.g. colA + 1 < colB * 2)
-- [x] arithmetic operators: +, -, *, /, %, >>, <<
+- [x] arithmetic operators: +, -, *, /, %, >>, <<, (), ~
 - [x] AND, OR, NOT
 - [x] LIKE, IN, REGEX, IS NULL, BETWEEN
 - [x] LIMIT, SIZE, DISTINCT
@@ -69,9 +69,9 @@ if err == nil {
 }
 ~~~~
 ### Pagination
-ESQL support 2 kinds of pagination: FROM keyword and ES search_after.   
-- FROM keyword: the same as SQL syntax. Be careful, **ES only support a page smaller than 10k**, if your offset is large than 10k, search_after is necessary.   
-- search_after: Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order.   
+ESQL support 2 kinds of pagination: FROM keyword and ES search_after.
+- FROM keyword: the same as SQL syntax. Be careful, **ES only support a page smaller than 10k**, if your offset is large than 10k, search_after is necessary.
+- search_after: Once you know the paging tokens, just feed them to `Convert` or `ConvertPretty` API in order.
 
 Below shows an example.
 ~~~~go
@@ -137,10 +137,6 @@ To customize test cases:
 - ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
 - To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
 - Comparison with arithmetics can be potentially slow since it uses scripting query and thus is not able to take advantage of reverse index. For binary operators, please refer to [this link](https://www.elastic.co/guide/en/elasticsearch/painless/6.5/painless-operators.html) on the precedence. We don't support all of them.
-
-
-## Current Issue
-- parsing issue w/ date datatype in nested field
 
 
 ## Acknowledgement

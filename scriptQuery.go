@@ -16,12 +16,40 @@ func (e *ESql) convertToScript(expr sqlparser.Expr) (script string, err error) {
 		script, err = e.convertValExpr(expr, true)
 	case *sqlparser.BinaryExpr:
 		script, err = e.convertBinaryExpr(expr)
+	case *sqlparser.ParenExpr:
+		parenExpr := expr.(*sqlparser.ParenExpr)
+		script, err = e.convertToScript(parenExpr.Expr)
+		script = fmt.Sprintf(`(%v)`, script)
+	case *sqlparser.UnaryExpr:
+		script, err = e.convertUnaryExpr(expr)
 	default:
 		err = fmt.Errorf("esql: invalid expression type for scripting")
 	}
 	if err != nil {
 		return "", err
 	}
+	return script, nil
+}
+
+func (e *ESql) convertUnaryExpr(expr sqlparser.Expr) (string, error) {
+	var script, expStr string
+	var err error
+	unaryExpr, ok := expr.(*sqlparser.UnaryExpr)
+	if !ok {
+		err = fmt.Errorf("esql: invalid unary expression")
+		return "", err
+	}
+	op, ok := opUnaryExpr[unaryExpr.Operator]
+	if !ok {
+		err = fmt.Errorf("esql: not supported binary expression operator")
+		return "", err
+	}
+	expStr, err = e.convertToScript(unaryExpr.Expr)
+	if err != nil {
+		return "", err
+	}
+
+	script = fmt.Sprintf(`%v%v`, op, expStr)
 	return script, nil
 }
 

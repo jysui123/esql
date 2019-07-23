@@ -18,7 +18,7 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sqls.txt`
+var testCases = `testcases/sql.txt`
 var testCasesInvalid = `testcases/sqlsInvalid.txt`
 var testCasesInvalidCad = `testcases/sqlsInvalidCad.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
