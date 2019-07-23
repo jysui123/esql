@@ -11,6 +11,7 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 - [x] LIKE, IN, REGEX, IS NULL, BETWEEN
 - [x] LIMIT, SIZE, DISTINCT
 - [x] COUNT, COUNT(DISTINCT)
+- [x] GROUP_CONCAT
 - [x] AVG, MAX, MIN, SUM
 - [x] GROUP BY, ORDER BY
 - [x] HAVING
@@ -152,6 +153,7 @@ This project is originated from [elasticsql](https://github.com/cch123/elasticsq
 |keyword GROUP BY|using "composite" tag to flatten multiple grouping|
 |keyword ORDER BY|using "bucket_sort" to support order by aggregation functions|
 |keyword HAVING|using "bucket_selector" and painless scripting language to support HAVING|
+|keyword GROUP_CONCAT|support GROUP_CONCAT on multiple columns and costum separator (sort not supported here)|
 |aggregations|allow introducing aggregation functions from all HAVING, SELECT, ORDER BY|
 |column name filtering|allow user pass an white list, when the sql query tries to select column out side white list, refuse the converting|
 |column name replacing|allow user pass an function as initializing parameter, the matched column name will be replaced upon the policy|

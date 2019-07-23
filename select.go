@@ -354,8 +354,8 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 
 	// use painless scripting query here
 	if scriptQuery {
-		lhsStr, err = e.convertToScript(lhsExpr)
-		rhsStr, err = e.convertToScript(rhsExpr)
+		lhsStr, _, _, err = e.convertToScript(lhsExpr)
+		rhsStr, _, _, err = e.convertToScript(rhsExpr)
 		if err != nil {
 			return "", err
 		}

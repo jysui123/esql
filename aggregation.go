@@ -316,7 +316,7 @@ func (e *ESql) getAggConcatSelect(aggConcatExprSlice []*sqlparser.GroupConcatExp
 func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []*sqlparser.GroupConcatExpr, []string, []string, error) {
 	var aggFuncExprSlice []*sqlparser.FuncExpr
 	var aggConcatExprSlice []*sqlparser.GroupConcatExpr
-	var colNameSlice, aggNameSlice []string
+	var colNameSlice, aggNameSlice, scripts []string
 	for _, selectExpr := range expr {
 		// from sqlparser's definition, we need to first convert the selectExpr to AliasedExpr
 		// and then check whether AliasedExpr is a FuncExpr or just ColName
@@ -339,8 +339,16 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				concatExpr := aliasedExpr.Expr.(*sqlparser.GroupConcatExpr)
 				aggConcatExprSlice = append(aggConcatExprSlice, concatExpr)
 				aggNameSlice = append(aggNameSlice, sqlparser.String(concatExpr))
+			case *sqlparser.BinaryExpr:
+				script, aggFuncs, aggNames, err := e.convertToScript(aliasedExpr.Expr)
+				if err != nil {
+					return nil, nil, nil, nil, err
+				}
+				aggFuncExprSlice = append(aggFuncExprSlice, aggFuncs...)
+				aggNameSlice = append(aggNameSlice, aggNames...)
+				scripts = append(scripts, script)
 			default:
-				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
+				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr.Expr)
 				return nil, nil, nil, nil, err
 			}
 		default:
