@@ -21,7 +21,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 			return "", err
 		}
 	}
-	aggFuncExprSlice, colNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +48,13 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	// they are used to generate final json query
 
 	// handle selected aggregation functions
-	aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, err := e.getAggSelect(aggFuncExprSlice)
+	aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, err := e.getAggFuncSelect(aggFuncExprSlice)
+	if err != nil {
+		return "", err
+	}
+
+	// handle selected group_concat
+	aggConcatSlice, aggTagConcatSlice, err := e.getAggConcatSelect(aggConcatExprSlice)
 	if err != nil {
 		return "", err
 	}
@@ -85,13 +91,17 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 
 	// generate inside aggs field
 	var dslAgg string
-	if len(aggTagSlice) > 0 {
-		var dslAggSlice []string
+	var dslAggSlice []string
+	if len(aggTagSlice)+len(aggTagConcatSlice) > 0 {
 		for i, tag := range aggTagSlice {
 			if tag != "_count" {
 				dslAgg := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, tag, aggNameSlice[i], aggTargetSlice[i])
 				dslAggSlice = append(dslAggSlice, dslAgg)
 			}
+		}
+		for i, tag := range aggTagConcatSlice {
+			dslAgg := fmt.Sprintf(`"%v": {%v}`, tag, aggConcatSlice[i])
+			dslAggSlice = append(dslAggSlice, dslAgg)
 		}
 		if len(aggTagOrderBySlice) > 0 {
 			var dslOrderSlice []string
@@ -117,9 +127,9 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 
 	// generate final dsl for aggs field
 	// here "groupby" is just a tag and can be any unreserved word
-	if len(dslGroupBy) == 0 && len(aggTagSlice) == 0 {
+	if len(dslGroupBy) == 0 && len(dslAggSlice) == 0 {
 		dsl = ""
-	} else if len(aggTagSlice) == 0 {
+	} else if len(dslAggSlice) == 0 {
 		dsl = fmt.Sprintf(`{"groupby": {%v}}`, dslGroupBy)
 	} else if len(dslGroupBy) == 0 {
 		dsl = dslAgg
@@ -212,7 +222,7 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 	return aggNameSlice, aggTargetSlice, aggTagSlice, aggDirSlice, aggTagSet, nil
 }
 
-func (e *ESql) getAggSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []string, map[string]int, error) {
+func (e *ESql) getAggFuncSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []string, map[string]int, error) {
 	var aggNameSlice, aggTargetSlice, aggTagSlice []string
 	aggTagSet := make(map[string]int) // tag -> offset, for compatibility checking
 
@@ -265,8 +275,47 @@ func (e *ESql) getAggSelect(exprs []*sqlparser.FuncExpr) ([]string, []string, []
 	return aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet, nil
 }
 
-func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []string, []string, error) {
+func (e *ESql) getAggConcatSelect(aggConcatExprSlice []*sqlparser.GroupConcatExpr) ([]string, []string, error) {
+	var aggConcatSlice, aggTagConcatSlice []string
+	for _, concatExpr := range aggConcatExprSlice {
+		var colNameStrSlice, unitStrSlice []string
+		for _, selExpr := range concatExpr.Exprs {
+			colName, ok := selExpr.(*sqlparser.AliasedExpr).Expr.(*sqlparser.ColName)
+			if !ok {
+				err := fmt.Errorf(`esql: fail to parse group concat`)
+				return nil, nil, err
+			}
+			colNameStr, err := e.convertColName(colName)
+			if err != nil {
+				return nil, nil, err
+			}
+			colNameStrSlice = append(colNameStrSlice, colNameStr)
+			unitStrSlice = append(unitStrSlice, fmt.Sprintf(`doc['%v'].value`, colNameStr))
+		}
+
+		sep := concatExpr.Separator[12 : len(concatExpr.Separator)-1]
+
+		unitStr := strings.Join(unitStrSlice, ` + '`+sep+`' + `)
+		if len(colNameStrSlice) > 1 {
+			unitStr = fmt.Sprintf(`'(' + %v + ')'`, unitStr)
+		}
+
+		init := `"init_script": "state.strs = []"`
+		mapping := fmt.Sprintf(`"map_script": "state.strs.add(%v)"`, unitStr)
+		combine := fmt.Sprintf(`"combine_script": "return String.join('%v', state.strs);"`, sep)
+		reduce := fmt.Sprintf(`"reduce_script": "return String.join('%v', states);"`, sep)
+		scriptedMetric := fmt.Sprintf(`"scripted_metric": {%v, %v, %v, %v}`, init, mapping, combine, reduce)
+
+		aggConcatSlice = append(aggConcatSlice, scriptedMetric)
+		aggTagConcatSlice = append(aggTagConcatSlice, "group_concat_"+strings.Join(colNameStrSlice, "_"))
+	}
+
+	return aggConcatSlice, aggTagConcatSlice, nil
+}
+
+func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []*sqlparser.GroupConcatExpr, []string, []string, error) {
 	var aggFuncExprSlice []*sqlparser.FuncExpr
+	var aggConcatExprSlice []*sqlparser.GroupConcatExpr
 	var colNameSlice, aggNameSlice []string
 	for _, selectExpr := range expr {
 		// from sqlparser's definition, we need to first convert the selectExpr to AliasedExpr
@@ -283,17 +332,21 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				lhs := aliasedExpr.Expr.(*sqlparser.ColName)
 				lhsStr, err := e.convertColName(lhs)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				colNameSlice = append(colNameSlice, lhsStr)
+			case *sqlparser.GroupConcatExpr:
+				concatExpr := aliasedExpr.Expr.(*sqlparser.GroupConcatExpr)
+				aggConcatExprSlice = append(aggConcatExprSlice, concatExpr)
+				aggNameSlice = append(aggNameSlice, sqlparser.String(concatExpr))
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr)
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 		default:
 		}
 	}
-	return aggFuncExprSlice, colNameSlice, aggNameSlice, nil
+	return aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, nil
 }
 
 func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSet map[string]int, err error) {
