@@ -23,9 +23,13 @@ func (e *ESql) convertToScript(expr sqlparser.Expr) (script string, aggFuncSlice
 	case *sqlparser.UnaryExpr:
 		script, aggFuncSlice, aggFuncNameSlice, err = e.convertUnaryExpr(expr)
 	case *sqlparser.FuncExpr:
+		var aggNameStr string
+		aggNameStr, script, err = e.convertFuncExpr(expr)
+		if err != nil {
+			return "", nil, nil, err
+		}
 		aggFuncSlice = append(aggFuncSlice, expr.(*sqlparser.FuncExpr))
-		aggFuncNameSlice = append(aggFuncNameSlice, sqlparser.String(expr.(*sqlparser.FuncExpr).Exprs))
-		script, err = e.convertFuncExpr(expr)
+		aggFuncNameSlice = append(aggFuncNameSlice, aggNameStr)
 	default:
 		err = fmt.Errorf("esql: invalid expression type for scripting")
 	}
@@ -35,18 +39,18 @@ func (e *ESql) convertToScript(expr sqlparser.Expr) (script string, aggFuncSlice
 	return script, aggFuncSlice, aggFuncNameSlice, nil
 }
 
-func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (script string, err error) {
+func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (funcNameStr string, script string, err error) {
 	funcExpr, ok := expr.(*sqlparser.FuncExpr)
 	if !ok {
 		err = fmt.Errorf("esql: fail to parse funcExpr")
-		return "", err
+		return "", "", err
 	}
-	_, _, aggTagStr, err := e.extractFuncTag(funcExpr)
+	funcNameStr, _, aggTagStr, err := e.extractFuncTag(funcExpr)
 	if err != nil {
 		err = fmt.Errorf(`%v at HAVING`, err)
 	}
 	script = fmt.Sprintf(`params.%v`, aggTagStr)
-	return script, nil
+	return funcNameStr, script, nil
 }
 
 func (e *ESql) convertUnaryExpr(expr sqlparser.Expr) (script string, aggFuncSlice []*sqlparser.FuncExpr, aggFuncNameSlice []string, err error) {

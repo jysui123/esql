@@ -4,23 +4,33 @@
 Use SQL to query Elasticsearch. ES V6 compatible.
 
 ## Supported features
+### Keywords and functionalities
 - [x] =, !=, <, >, <=, >=, <>, ()
-- [x] comparison with arithmetics (e.g. colA + 1 < colB * 2)
 - [x] arithmetic operators: +, -, *, /, %, >>, <<, (), ~
 - [x] AND, OR, NOT
+- [x] AS
 - [x] LIKE, IN, REGEX, IS NULL, BETWEEN
-- [x] LIMIT, SIZE, DISTINCT
-- [x] COUNT, COUNT(DISTINCT)
-- [x] GROUP_CONCAT
-- [x] AVG, MAX, MIN, SUM
+- [x] LIMIT, SIZE, OFFSET
 - [x] GROUP BY, ORDER BY
+- [x] GROUP_CONCAT
+- [x] AVG, MAX, MIN, SUM, COUNT
 - [x] HAVING
 - [x] query key value macro (see usage)
 - [x] pagination (search after)
 - [ ] pagination for aggregation
-- [ ] functions
+- [ ] UDF
 - [ ] JOIN
 - [ ] nested queries
+
+### Attention
+- AS only support alias for compound aggregation arithmetics in SELECT. e.g. `SELECT MAX(colA)/COUNT(*) AS res FROM dummy GROUP BY colB`
+- Arithmetics are allowed in SELECT and WHERE clause. They use script query, and thus are not able to utilize reverse index and can be potentially slow.
+- Aggregation functions can be introduced from SELECT, ORDER BY and HAVING
+- If you want to apply aggregation on some fields, they should not be in type `text` in ES
+- `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
+- ES SQL API and esql do not support `SELECT DISTINCT`, a workaround is to query something like `SELECT * FROM table GROUP BY colName`
+- To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
+- Comparison with arithmetics can be potentially slow since it uses scripting query and thus is not able to take advantage of reverse index. For binary operators, please refer to [this link](https://www.elastic.co/guide/en/elasticsearch/painless/6.5/painless-operators.html) on the precedence. We don't support all of them.
 
 
 ## Usage
@@ -128,16 +138,6 @@ To customize test cases:
 |:-:|:-:|:-:|
 |missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
 |group by multiple columns|nested "aggs" field|"composite" flattened grouping|
-
-
-## Attentions
-- If you want to apply aggregation on some fields, they should not be in type `text` in ES
-- `COUNT(colName)` will include documents w/ null values in that column in ES SQL API, while in esql we exclude null valued documents
-- ES SQL API and esql do not support `SELECT DISTINCT`, a workaround is to query something like `SELECT * FROM table GROUP BY colName`
-- ES SQL API does not support `ORDER BY aggregation`, esql support it by applying bucket_sort
-- ES SQL API does not support `HAVING aggregation` that not show up in `SELECT`, esql support it
-- To use regex query, the column should be `keyword` type, otherwise the regex is applied to all the terms produced by tokenizer from the original text rather than the original text itself
-- Comparison with arithmetics can be potentially slow since it uses scripting query and thus is not able to take advantage of reverse index. For binary operators, please refer to [this link](https://www.elastic.co/guide/en/elasticsearch/painless/6.5/painless-operators.html) on the precedence. We don't support all of them.
 
 
 ## Acknowledgement
