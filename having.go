@@ -155,37 +155,10 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 	}
 
 	for _, funcExpr := range funcExprs {
-		aggNameStr := strings.ToLower(funcExpr.Name.String())
-		aggTargetStr := sqlparser.String(funcExpr.Exprs)
-		aggTargetStr = strings.Trim(aggTargetStr, "`")
-		aggTargetStr, err := e.keyProcess(aggTargetStr)
+		aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 		if err != nil {
-			return "", err
+			err = fmt.Errorf(`%v at HAVING`, err)
 		}
-
-		var aggTagStr string
-		switch aggNameStr {
-		case "count":
-			if aggTargetStr == "*" {
-				aggTagStr = "_count"
-			} else if funcExpr.Distinct {
-				aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
-				aggNameStr = "cardinality"
-			} else {
-				aggTagStr = aggNameStr + "_" + aggTargetStr
-				aggNameStr = "value_count"
-			}
-		case "avg", "sum", "min", "max":
-			if funcExpr.Distinct {
-				err := fmt.Errorf(`esql: HAVING: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
-				return "", err
-			}
-			aggTagStr = aggNameStr + "_" + aggTargetStr
-		default:
-			err := fmt.Errorf(`esql: HAVING: aggregation function %v not supported`, aggNameStr)
-			return "", err
-		}
-		aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
 		aggTagSet[aggTagStr] = len(*aggNameSlice)
 		*aggNameSlice = append(*aggNameSlice, aggNameStr)
 		*aggTargetSlice = append(*aggTargetSlice, aggTargetStr)

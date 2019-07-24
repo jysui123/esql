@@ -35,9 +35,18 @@ func (e *ESql) convertToScript(expr sqlparser.Expr) (script string, aggFuncSlice
 	return script, aggFuncSlice, aggFuncNameSlice, nil
 }
 
-func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (string, error) {
-
-	return "", nil
+func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (script string, err error) {
+	funcExpr, ok := expr.(*sqlparser.FuncExpr)
+	if !ok {
+		err = fmt.Errorf("esql: fail to parse funcExpr")
+		return "", err
+	}
+	_, _, aggTagStr, err := e.extractFuncTag(funcExpr)
+	if err != nil {
+		err = fmt.Errorf(`%v at HAVING`, err)
+	}
+	script = fmt.Sprintf(`params.%v`, aggTagStr)
+	return script, nil
 }
 
 func (e *ESql) convertUnaryExpr(expr sqlparser.Expr) (script string, aggFuncSlice []*sqlparser.FuncExpr, aggFuncNameSlice []string, err error) {

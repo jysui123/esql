@@ -41,7 +41,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 	}
 
 	// handle SELECT keyword
-	_, _, selectedColNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	_, _, selectedColNameSlice, aggNameSlice, _, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", nil, err
 	}

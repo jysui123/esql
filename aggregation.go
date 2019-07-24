@@ -21,7 +21,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 			return "", err
 		}
 	}
-	aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, err := e.extractSelectedExpr(sel.SelectExprs)
+	aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, aggScripts, err := e.extractSelectedExpr(sel.SelectExprs)
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +92,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	// generate inside aggs field
 	var dslAgg string
 	var dslAggSlice []string
-	if len(aggTagSlice)+len(aggTagConcatSlice) > 0 {
+	if len(aggTagSlice)+len(aggTagConcatSlice)+len(aggScripts) > 0 {
 		for i, tag := range aggTagSlice {
 			if tag != "_count" {
 				dslAgg := fmt.Sprintf(`"%v": {"%v": {"field": "%v"}}`, tag, aggNameSlice[i], aggTargetSlice[i])
@@ -103,6 +103,7 @@ func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 			dslAgg := fmt.Sprintf(`"%v": {%v}`, tag, aggConcatSlice[i])
 			dslAggSlice = append(dslAggSlice, dslAgg)
 		}
+		dslAggSlice = append(dslAggSlice, aggScripts...)
 		if len(aggTagOrderBySlice) > 0 {
 			var dslOrderSlice []string
 			for i, tag := range aggTagOrderBySlice {
@@ -166,36 +167,9 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 		case *sqlparser.FuncExpr:
 			aggCnt++
 			funcExpr := orderExpr.Expr.(*sqlparser.FuncExpr)
-			aggNameStr := strings.ToLower(funcExpr.Name.String())
-			// ? should we convert funcExpr.Exprs to colname?
-			aggTargetStr := sqlparser.String(funcExpr.Exprs)
-			aggTargetStr = strings.Trim(aggTargetStr, "`")
-			aggTargetStr, err := e.keyProcess(aggTargetStr)
+			aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 			if err != nil {
-				return nil, nil, nil, nil, nil, err
-			}
-			var aggTagStr string
-			switch aggNameStr {
-			case "count":
-				// no need to handle count(*) since the size of bucket is always returned
-				if aggTargetStr == "*" {
-					aggTagStr = "_count"
-				} else if funcExpr.Distinct {
-					aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
-					aggNameStr = "cardinality"
-				} else {
-					aggTagStr = aggNameStr + "_" + aggTargetStr
-					aggNameStr = "value_count"
-				}
-			case "avg", "sum", "min", "max":
-				if funcExpr.Distinct {
-					err := fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
-					return nil, nil, nil, nil, nil, err
-				}
-				aggTagStr = aggNameStr + "_" + aggTargetStr
-			default:
-				err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
-				return nil, nil, nil, nil, nil, err
+				err = fmt.Errorf(`%v at ORDER BY`, err)
 			}
 			if dir, exist := aggTagDirSet[aggTagStr]; exist {
 				if dir != orderExpr.Direction {
@@ -204,7 +178,6 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 				}
 				continue
 			}
-			aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
 			aggTagDirSet[aggTagStr] = orderExpr.Direction
 			aggTagSet[aggTagStr] = len(aggTagSet)
 			aggNameSlice = append(aggNameSlice, aggNameStr)
@@ -227,40 +200,12 @@ func (e *ESql) getAggFuncSelect(exprs []*sqlparser.FuncExpr) ([]string, []string
 	aggTagSet := make(map[string]int) // tag -> offset, for compatibility checking
 
 	for _, funcExpr := range exprs {
-		aggNameStr := strings.ToLower(funcExpr.Name.String())
-		aggTargetStr := sqlparser.String(funcExpr.Exprs)
-		aggTargetStr = strings.Trim(aggTargetStr, "`")
-		aggTargetStr, err := e.keyProcess(aggTargetStr)
+		aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			err = fmt.Errorf(`%v at SELECT`, err)
 		}
-
-		var aggTagStr string
-		switch aggNameStr {
-		case "count":
-			// no need to handle count(*) since the size of bucket is always returned
-			if aggTargetStr == "*" {
-				continue
-			}
-			if funcExpr.Distinct {
-				aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
-				aggNameStr = "cardinality"
-			} else {
-				aggTagStr = aggNameStr + "_" + aggTargetStr
-				// * ES SQL translate API just ignore non DISTINCT COUNT since the count of a bucket is always
-				// * returned. However, we don't want count null value of a certain field, as a result we count
-				// * documents w/ non-null value of the target field by "value_count" keyword
-				aggNameStr = "value_count"
-			}
-		case "avg", "sum", "min", "max":
-			if funcExpr.Distinct {
-				err := fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
-				return nil, nil, nil, nil, err
-			}
-			aggTagStr = aggNameStr + "_" + aggTargetStr
-		default:
-			err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
-			return nil, nil, nil, nil, err
+		if aggNameStr == "count" && aggTargetStr == "*" {
+			continue
 		}
 		if _, exist := aggTagSet[aggTagStr]; exist {
 			continue
@@ -313,10 +258,10 @@ func (e *ESql) getAggConcatSelect(aggConcatExprSlice []*sqlparser.GroupConcatExp
 	return aggConcatSlice, aggTagConcatSlice, nil
 }
 
-func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []*sqlparser.GroupConcatExpr, []string, []string, error) {
+func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []*sqlparser.GroupConcatExpr, []string, []string, []string, error) {
 	var aggFuncExprSlice []*sqlparser.FuncExpr
 	var aggConcatExprSlice []*sqlparser.GroupConcatExpr
-	var colNameSlice, aggNameSlice, scripts []string
+	var colNameSlice, aggNameSlice, aggScripts []string
 	for _, selectExpr := range expr {
 		// from sqlparser's definition, we need to first convert the selectExpr to AliasedExpr
 		// and then check whether AliasedExpr is a FuncExpr or just ColName
@@ -332,29 +277,45 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				lhs := aliasedExpr.Expr.(*sqlparser.ColName)
 				lhsStr, err := e.convertColName(lhs)
 				if err != nil {
-					return nil, nil, nil, nil, err
+					return nil, nil, nil, nil, nil, err
 				}
 				colNameSlice = append(colNameSlice, lhsStr)
 			case *sqlparser.GroupConcatExpr:
 				concatExpr := aliasedExpr.Expr.(*sqlparser.GroupConcatExpr)
 				aggConcatExprSlice = append(aggConcatExprSlice, concatExpr)
 				aggNameSlice = append(aggNameSlice, sqlparser.String(concatExpr))
-			case *sqlparser.BinaryExpr:
+			case *sqlparser.BinaryExpr, *sqlparser.UnaryExpr, *sqlparser.ParenExpr:
 				script, aggFuncs, aggNames, err := e.convertToScript(aliasedExpr.Expr)
 				if err != nil {
-					return nil, nil, nil, nil, err
+					return nil, nil, nil, nil, nil, err
 				}
 				aggFuncExprSlice = append(aggFuncExprSlice, aggFuncs...)
 				aggNameSlice = append(aggNameSlice, aggNames...)
-				scripts = append(scripts, script)
+				var bucketPathSlice []string
+				bucketPathMap := make(map[string]int)
+				for _, funcExpr := range aggFuncExprSlice {
+					_, _, aggTagStr, err := e.extractFuncTag(funcExpr)
+					if err != nil {
+						err = fmt.Errorf(`%v at HAVING`, err)
+					}
+					//param := fmt.Sprintf(`%v_%v`, aggNameStr, aggTargetStr)
+					if _, exist := bucketPathMap[aggTagStr]; !exist {
+						bucketPathMap[aggTagStr] = 1
+						bucketPathSlice = append(bucketPathSlice, fmt.Sprintf(`"%v": "%v"`, aggTagStr, aggTagStr))
+					}
+				}
+				bucketsPath := strings.Join(bucketPathSlice, ",")
+				bucketsPath = fmt.Sprintf(`"buckets_path": {%v}`, bucketsPath)
+				exprScript := fmt.Sprintf(`"aggExpr%v": {"bucket_script": {%v, "script": "return %v;"}}`, len(aggScripts)+1, bucketsPath, script)
+				aggScripts = append(aggScripts, exprScript)
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr.Expr)
-				return nil, nil, nil, nil, err
+				return nil, nil, nil, nil, nil, err
 			}
 		default:
 		}
 	}
-	return aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, nil
+	return aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, aggScripts, nil
 }
 
 func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSet map[string]int, err error) {
@@ -380,4 +341,41 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 	dsl = strings.Join(groupByStrSlice, ",")
 	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
 	return dsl, colNameSet, nil
+}
+
+func (e *ESql) extractFuncTag(funcExpr *sqlparser.FuncExpr) (aggNameStr string, aggTargetStr string, aggTagStr string, err error) {
+	aggNameStr = strings.ToLower(funcExpr.Name.String())
+	aggTargetStr = sqlparser.String(funcExpr.Exprs)
+	aggTargetStr = strings.Trim(aggTargetStr, "`")
+	aggTargetStr, err = e.keyProcess(aggTargetStr)
+	if err != nil {
+		return "", "", "", nil
+	}
+
+	switch aggNameStr {
+	// * ES SQL translate API just ignore non DISTINCT COUNT since the count of a bucket is always
+	// * returned. However, we don't want count null value of a certain field, as a result we count
+	// * documents w/ non-null value of the target field by "value_count" keyword
+	case "count":
+		if aggTargetStr == "*" {
+			aggTagStr = "_count"
+		} else if funcExpr.Distinct {
+			aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
+			aggNameStr = "cardinality"
+		} else {
+			aggTagStr = aggNameStr + "_" + aggTargetStr
+			aggNameStr = "value_count"
+		}
+	case "avg", "sum", "min", "max":
+		if funcExpr.Distinct {
+			err := fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
+			return "", "", "", err
+		}
+		aggTagStr = aggNameStr + "_" + aggTargetStr
+	default:
+		err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
+		return "", "", "", err
+	}
+	aggTagStr = strings.Replace(aggTagStr, ".", "_", -1)
+	return aggNameStr, aggTargetStr, aggTagStr, nil
 }
