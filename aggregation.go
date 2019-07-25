@@ -284,6 +284,7 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				concatExpr := aliasedExpr.Expr.(*sqlparser.GroupConcatExpr)
 				aggConcatExprSlice = append(aggConcatExprSlice, concatExpr)
 				aggNameSlice = append(aggNameSlice, sqlparser.String(concatExpr))
+			// TODO: separate this part as a separated function
 			case *sqlparser.BinaryExpr, *sqlparser.UnaryExpr, *sqlparser.ParenExpr:
 				script, aggFuncs, aggNames, err := e.convertToScript(aliasedExpr.Expr)
 				if err != nil {
@@ -296,7 +297,7 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 				for _, funcExpr := range aggFuncExprSlice {
 					_, _, aggTagStr, err := e.extractFuncTag(funcExpr)
 					if err != nil {
-						err = fmt.Errorf(`%v at HAVING`, err)
+						err = fmt.Errorf(`%v at SELECT`, err)
 					}
 					//param := fmt.Sprintf(`%v_%v`, aggNameStr, aggTargetStr)
 					if _, exist := bucketPathMap[aggTagStr]; !exist {
@@ -304,9 +305,15 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 						bucketPathSlice = append(bucketPathSlice, fmt.Sprintf(`"%v": "%v"`, aggTagStr, aggTagStr))
 					}
 				}
+				var tag string
+				if sqlparser.String(aliasedExpr.As) != "" {
+					tag = sqlparser.String(aliasedExpr.As)
+				} else {
+					tag = fmt.Sprintf(`aggExpr%v`, len(aggScripts)+1)
+				}
 				bucketsPath := strings.Join(bucketPathSlice, ",")
 				bucketsPath = fmt.Sprintf(`"buckets_path": {%v}`, bucketsPath)
-				exprScript := fmt.Sprintf(`"aggExpr%v": {"bucket_script": {%v, "script": "return %v;"}}`, len(aggScripts)+1, bucketsPath, script)
+				exprScript := fmt.Sprintf(`"%v": {"bucket_script": {%v, "script": "return %v;"}}`, tag, bucketsPath, script)
 				aggScripts = append(aggScripts, exprScript)
 			default:
 				err := fmt.Errorf(`esql: %T not supported in select body`, aliasedExpr.Expr)
