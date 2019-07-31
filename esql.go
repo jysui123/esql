@@ -24,7 +24,6 @@ type ESql struct {
 	filterValue  FilterFunc  // select the column we want to process value macro
 	processKey   ProcessFunc // if selected by filterKey, change the query name
 	processValue ProcessFunc // if selected by filterValue, change the query value
-	cadence      bool
 	pageSize     int
 	bucketNumber int
 }
@@ -35,7 +34,6 @@ type ESql struct {
 func (e *ESql) SetDefault() {
 	e.pageSize = DefaultPageSize
 	e.bucketNumber = DefaultBucketNumber
-	e.cadence = false
 	e.filterKey = nil
 	e.filterValue = nil
 	e.processKey = nil
@@ -47,7 +45,6 @@ func NewESql() *ESql {
 	return &ESql{
 		pageSize:     DefaultPageSize,
 		bucketNumber: DefaultBucketNumber,
-		cadence:      false,
 		processKey:   nil,
 		processValue: nil,
 		filterKey:    nil,

@@ -104,8 +104,6 @@ page_token_colB := "bbc"
 dsl_page2_search_after, sortFields, err := e.ConvertPretty(sql_page2_search_after, page_colA, page_colB)
 ~~~~
 
-For Cadence usage, refer to [this link](cadenceDevReadme.md).
-
 
 ## Testing
 We are using elasticsearch's SQL translate API as a reference in testing. Testing contains 3 basic steps:

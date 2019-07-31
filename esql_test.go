@@ -186,7 +186,6 @@ func TestUnit(t *testing.T) {
 	}
 
 	e.SetDefault()
-	e.SetCadence(true)
 	e.ProcessQueryKey(filter1, replace)
 	e.ProcessQueryValue(filter2, process)
 	e.SetPageSize(1000)
@@ -198,29 +197,10 @@ func TestUnit(t *testing.T) {
 		return
 	}
 
-	for i, sql := range sqls {
-		fmt.Printf("test %dth query ...\n", i+1)
-		_, _, err := e.ConvertPrettyCadence(sql, "1", "12")
-		if err != nil {
-			t.Errorf("%vth query fails: %v", i+1, err)
-			return
-		}
-	}
-
 	sqls, err = readQueries(testCasesInvalidCad)
 	if err != nil {
 		t.Errorf("Fail to load testcasesInvalidCad")
 		return
-	}
-
-	for i, sql := range sqls {
-		fmt.Printf("test %dth query ...\n", i+1)
-		_, _, err := e.ConvertPrettyCadence(sql, "1", "12")
-		if err == nil {
-			t.Errorf("%vth query should fail but not", i+1)
-			return
-		}
-		fmt.Printf("%v\n", err)
 	}
 }
 
@@ -326,42 +306,6 @@ func TestSQL(t *testing.T) {
 
 func myfilter(s string) bool {
 	return s != "colE"
-}
-
-func TestGenCadenceDSL(t *testing.T) {
-	fmt.Println("Test Generating DSL for Cadence...")
-	var e ESql
-	e.SetDefault()
-	e.SetCadence(true)
-	e.SetPageSize(100)
-	e.SetBucketNum(100)
-	//e.SetFilter(myfilter)
-	//e.SetReplace(defaultCadenceColNameReplacePolicy)
-
-	sqls, err := readQueries(testCases)
-	if err != nil {
-		t.Errorf("Fail to load testcases")
-		return
-	}
-
-	fp, err := os.Create(testDslsPrettyCadence)
-	if err != nil {
-		t.Error("Fail to create dsl file")
-	}
-	start := time.Now()
-	for i, sql := range sqls {
-		dslPretty, _, err := e.ConvertPretty(sql, "1", 123)
-		if err != nil {
-			t.Error(err)
-		}
-		fp.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
-		fp.WriteString(dslPretty)
-		fmt.Printf("query %d dsl generated\n", i+1)
-	}
-	elapsed := time.Since(start)
-	fmt.Printf("Time taken to generate all dsls: %s", elapsed)
-	fp.Close()
-	fmt.Println("DSL Cadence generated\n---------------------------------------------------------------------")
 }
 
 func TestUpdateUnitRef(t *testing.T) {

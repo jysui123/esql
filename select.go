@@ -25,10 +25,6 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		}
 		dslMap["query"] = dslQuery
 	}
-	// cadence special handling: add domain ID query and time query bounds
-	if e.cadence {
-		e.addCadenceDomainTimeQuery(sel, domainID, dslMap)
-	}
 
 	// handle FROM keyword, currently only support 1 target table
 	if len(sel.From) != 1 {
@@ -105,13 +101,6 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 			orderByStr := fmt.Sprintf(`{"%v": "%v"}`, colNameStr, orderExpr.Direction)
 			orderBySlice = append(orderBySlice, orderByStr)
 			sortField = append(sortField, colNameStr)
-		}
-		// cadence special handling: add runID as sorting tie breaker
-		if e.cadence {
-			orderBySlice, sortField, err = e.addCadenceSort(orderBySlice, sortField)
-			if err != nil {
-				return "", nil, err
-			}
 		}
 		if len(orderBySlice) > 0 {
 			dslMap["sort"] = fmt.Sprintf("[%v]", strings.Join(orderBySlice, ","))
