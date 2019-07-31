@@ -47,7 +47,7 @@ func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (funcNameStr string, script 
 	}
 	funcNameStr, _, aggTagStr, err := e.extractFuncTag(funcExpr)
 	if err != nil {
-		err = fmt.Errorf(`%v at HAVING`, err)
+		return "", "", err
 	}
 	script = fmt.Sprintf(`params.%v`, aggTagStr)
 	return funcNameStr, script, nil

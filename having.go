@@ -37,6 +37,7 @@ func (e *ESql) convertHavingExpr(expr sqlparser.Expr, aggNameSlice *[]string, ag
 		return e.convertHavingParenExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
 	case *sqlparser.RangeCond:
 		return e.convertHavingBetweenExpr(expr, aggNameSlice, aggTargetSlice, aggTagSlice, aggTagSet)
+	// TODO: case *sqlparser.BinaryExpr
 	default:
 		err := fmt.Errorf(`esql: %T expression in HAVING no supported`, expr)
 		return "", err
@@ -158,6 +159,7 @@ func (e *ESql) convertHavingComparisionExpr(expr sqlparser.Expr, aggNameSlice *[
 		aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 		if err != nil {
 			err = fmt.Errorf(`%v at HAVING`, err)
+			return "", err
 		}
 		aggTagSet[aggTagStr] = len(*aggNameSlice)
 		*aggNameSlice = append(*aggNameSlice, aggNameStr)

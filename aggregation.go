@@ -170,6 +170,7 @@ func (e *ESql) getAggOrderBy(orderBy sqlparser.OrderBy) ([]string, []string, []s
 			aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 			if err != nil {
 				err = fmt.Errorf(`%v at ORDER BY`, err)
+				return nil, nil, nil, nil, nil, err
 			}
 			if dir, exist := aggTagDirSet[aggTagStr]; exist {
 				if dir != orderExpr.Direction {
@@ -203,6 +204,7 @@ func (e *ESql) getAggFuncSelect(exprs []*sqlparser.FuncExpr) ([]string, []string
 		aggNameStr, aggTargetStr, aggTagStr, err := e.extractFuncTag(funcExpr)
 		if err != nil {
 			err = fmt.Errorf(`%v at SELECT`, err)
+			return nil, nil, nil, nil, err
 		}
 		if aggNameStr == "count" && aggTargetStr == "*" {
 			continue
@@ -298,6 +300,7 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 					_, _, aggTagStr, err := e.extractFuncTag(funcExpr)
 					if err != nil {
 						err = fmt.Errorf(`%v at SELECT`, err)
+						return nil, nil, nil, nil, nil, err
 					}
 					//param := fmt.Sprintf(`%v_%v`, aggNameStr, aggTargetStr)
 					if _, exist := bucketPathMap[aggTagStr]; !exist {

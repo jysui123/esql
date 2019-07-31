@@ -1,7 +1,7 @@
 # ESQL: Translate SQL to Elasticsearch DSL
 [![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql) [![codecov](https://codecov.io/gh/jysui123/esql/branch/master/graph/badge.svg)](https://codecov.io/gh/jysui123/esql) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
 
-Use SQL to query Elasticsearch. ES V6 compatible.
+Use SQL to query Elasticsearch. ES V6 and V7 compatible.
 
 ## Supported features
 ### Keywords and functionalities
@@ -23,7 +23,7 @@ Use SQL to query Elasticsearch. ES V6 compatible.
 - [ ] nested queries
 
 ### Attention
-- AS only support alias for compound aggregation arithmetics in SELECT. e.g. `SELECT MAX(colA)/COUNT(*) AS res FROM dummy GROUP BY colB`
+- AS only support alias for compound aggregation arithmetic expression in SELECT. e.g. `SELECT MAX(colA)/COUNT(*) AS res FROM dummy GROUP BY colB`. The tag in query result json of the expression will be assigned as the alias. Otherwise the tag will just be `aggExpr1`, `aggExpr2`, etc. For non-compound selection, the result tag is in the form of `<function name>_<argument>`
 - Arithmetics are allowed in SELECT and WHERE clause. They use script query, and thus are not able to utilize reverse index and can be potentially slow.
 - Aggregation functions can be introduced from SELECT, ORDER BY and HAVING
 - If you want to apply aggregation on some fields, they should not be in type `text` in ES
@@ -133,8 +133,8 @@ To customize test cases:
 - invalid query test cases are in `testcases/sqlsInvalid.txt`
 
 
-## ES V2.x vs ES V6.5
-|Item|ES V2.x|ES v6.5|
+## Changes from ES V2 to ES V6/V7
+|Item|ES V2|ES v6/v7|
 |:-:|:-:|:-:|
 |missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
 |group by multiple columns|nested "aggs" field|"composite" flattened grouping|

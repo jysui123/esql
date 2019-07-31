@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,7 +19,8 @@ import (
 )
 
 var tableName = `test`
-var testCases = `testcases/sql.txt`
+var testCases = `testcases/sqls.txt`
+var refDslForUnitTest = `testcases/dslRef.txt`
 var testCasesInvalid = `testcases/sqlsInvalid.txt`
 var testCasesInvalidCad = `testcases/sqlsInvalidCad.txt`
 var testCasesBenchmarkAll = `testcases/sqlsBm.txt`
@@ -130,24 +132,44 @@ func process(v string) (string, error) {
 	return v, nil
 }
 
-func TestCoverage(t *testing.T) {
+func TestUnit(t *testing.T) {
 	e := NewESql()
-	sqls, err := readSQLs(testCases)
+	sqls, err := readQueries(testCases)
 	if err != nil {
 		t.Errorf("Fail to load testcases")
+		return
+	}
+	dsls, err := readQueries(refDslForUnitTest)
+	if err != nil {
+		t.Errorf("Fail to load testcases ref")
 		return
 	}
 
 	for i, sql := range sqls {
 		fmt.Printf("test %dth query ...\n", i+1)
-		_, _, err := e.ConvertPretty(sql)
+		dsl, _, err := e.Convert(sql)
 		if err != nil {
 			t.Errorf("%vth query fails: %v", i+1, err)
 			return
 		}
+		var dslMap, dslMapRef map[string]interface{}
+		err = json.Unmarshal([]byte(dsl), &dslMap)
+		if err != nil {
+			t.Errorf("%vth query fails", i+1)
+			return
+		}
+		err = json.Unmarshal([]byte(dsls[i]), &dslMapRef)
+		if err != nil {
+			t.Errorf("%vth query reference fails", i+1)
+			return
+		}
+		if !reflect.DeepEqual(dslMap, dslMapRef) {
+			t.Errorf("%vth query does not match", i+1)
+			return
+		}
 	}
 
-	sqls, err = readSQLs(testCasesInvalid)
+	sqls, err = readQueries(testCasesInvalid)
 	if err != nil {
 		t.Errorf("Fail to load testcasesInvalid")
 		return
@@ -160,6 +182,7 @@ func TestCoverage(t *testing.T) {
 			t.Errorf("%vth query should fail but not", i+1)
 			return
 		}
+		fmt.Printf("%v\n", err)
 	}
 
 	e.SetDefault()
@@ -169,7 +192,7 @@ func TestCoverage(t *testing.T) {
 	e.SetPageSize(1000)
 	e.SetBucketNum(500)
 
-	sqls, err = readSQLs(testCasesCad)
+	sqls, err = readQueries(testCasesCad)
 	if err != nil {
 		t.Errorf("Fail to load testcasesCad")
 		return
@@ -182,10 +205,9 @@ func TestCoverage(t *testing.T) {
 			t.Errorf("%vth query fails: %v", i+1, err)
 			return
 		}
-		fmt.Printf("%v\n", err)
 	}
 
-	sqls, err = readSQLs(testCasesInvalidCad)
+	sqls, err = readQueries(testCasesInvalidCad)
 	if err != nil {
 		t.Errorf("Fail to load testcasesInvalidCad")
 		return
@@ -215,7 +237,7 @@ func TestSQL(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	sqls, err := readSQLs(testCases)
+	sqls, err := readQueries(testCases)
 	if err != nil {
 		t.Errorf("Fail to load testcases")
 		return
@@ -316,7 +338,7 @@ func TestGenCadenceDSL(t *testing.T) {
 	//e.SetFilter(myfilter)
 	//e.SetReplace(defaultCadenceColNameReplacePolicy)
 
-	sqls, err := readSQLs(testCases)
+	sqls, err := readQueries(testCases)
 	if err != nil {
 		t.Errorf("Fail to load testcases")
 		return
@@ -342,8 +364,31 @@ func TestGenCadenceDSL(t *testing.T) {
 	fmt.Println("DSL Cadence generated\n---------------------------------------------------------------------")
 }
 
-func readSQLs(fileName string) ([]string, error) {
+func TestUpdateUnitRef(t *testing.T) {
+	e := NewESql()
+	sqls, err := readQueries(testCases)
+	if err != nil {
+		t.Errorf("Fail to load testcases")
+		return
+	}
+	f, err := os.Create(refDslForUnitTest)
+	defer f.Close()
+
+	for i, sql := range sqls {
+		fmt.Printf("update %dth query ref ...\n", i+1)
+		dsl, _, err := e.Convert(sql)
+		if err != nil {
+			t.Errorf("%vth query fails: %v", i+1, err)
+			return
+		}
+		f.WriteString(dsl)
+		f.WriteString("\n")
+	}
+}
+
+func readQueries(fileName string) ([]string, error) {
 	f, err := os.Open(fileName)
+	defer f.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +398,6 @@ func readSQLs(fileName string) ([]string, error) {
 	for scanner.Scan() {
 		sqls = append(sqls, scanner.Text())
 	}
-	f.Close()
 	return sqls, nil
 }
 
@@ -381,7 +425,7 @@ func readSQLs(fileName string) ([]string, error) {
 // 		return
 // 	}
 
-// 	sqls, err := readSQLs(fileName)
+// 	sqls, err := readQueries(fileName)
 // 	if err != nil {
 // 		t.Errorf("Fail to open testcase file %v", fileName)
 // 		return
