@@ -7,6 +7,51 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
+func (e *ESql) convertAggregation(sel sqlparser.Select) (dsl string, err error) {
+	if len(sel.GroupBy) == 0 && sel.Having != nil {
+		err = fmt.Errorf(`esql: HAVING used without GROUP BY`)
+		return "", err
+	}
+
+	aggMaps := make(map[string]string)
+	dslGroupBy, err := e.convertGroupBy(sel.GroupBy, aggMaps)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.convertSelectExpr(sel.SelectExprs, aggMaps)
+	if err != nil {
+		return "", err
+	}
+
+	dslOrderBy, err := e.convertOrderBy(sel.OrderBy, aggMaps)
+	if err != nil {
+		return "", err
+	}
+
+	dslHaving, err := e.convertHaving(sel.Having, aggMaps)
+	if err != nil {
+		return "", err
+	}
+
+	var aggs []string
+	for tag, body := range aggMaps {
+		aggs = append(aggs, fmt.Sprintf(`%v: {%v}`, tag, body))
+	}
+	if dslOrderBy != "" {
+		aggs = append(aggs, fmt.Sprintf(`"order_by": {%v}`, dslOrderBy))
+	}
+	if dslHaving != "" {
+		aggs = append(aggs, fmt.Sprintf(`"having": {%v}`, dslHaving))
+	}
+	dsl = fmt.Sprintf(`"aggs": {%v}`, strings.Join(aggs, ","))
+
+	if dslGroupBy != "" {
+		dsl = fmt.Sprintf(`{"aggs": %v, %v}`, dslGroupBy, dsl)
+	}
+	return dsl, nil
+}
+
 func (e *ESql) convertAgg(sel sqlparser.Select) (dsl string, err error) {
 	if len(sel.GroupBy) == 0 && sel.Having != nil {
 		err = fmt.Errorf(`esql: HAVING used without GROUP BY`)
@@ -351,6 +396,54 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 	dsl = strings.Join(groupByStrSlice, ",")
 	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
 	return dsl, colNameSet, nil
+}
+
+func (e *ESql) convertFunctionExpr(funcExpr sqlparser.FuncExpr, funcMap map[string]string) (err error) {
+	var aggTagStr, aggTargetStr, aggNameStr string
+	aggNameStr = strings.ToLower(funcExpr.Name.String())
+	switch aggNameStr {
+	case "count":
+		aggTargetStr = sqlparser.String(funcExpr.Exprs)
+		aggTargetStr = strings.Trim(aggTargetStr, "`")
+		aggTargetStr, err = e.keyProcess(aggTargetStr)
+		if err != nil {
+			return err
+		}
+		if aggTargetStr == "*" {
+			aggTagStr = "_count"
+		} else if funcExpr.Distinct {
+			aggTagStr = aggNameStr + "_distinct_" + aggTargetStr
+			aggNameStr = "cardinality"
+		} else {
+			aggTagStr = aggNameStr + "_" + aggTargetStr
+			aggNameStr = "value_count"
+		}
+	case "avg", "sum", "min", "max":
+		aggTargetStr = sqlparser.String(funcExpr.Exprs)
+		aggTargetStr = strings.Trim(aggTargetStr, "`")
+		aggTargetStr, err = e.keyProcess(aggTargetStr)
+		if err != nil {
+			return err
+		}
+		if funcExpr.Distinct {
+			err = fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, aggNameStr)
+			return err
+		}
+		aggTagStr = aggNameStr + "_" + aggTargetStr
+	case "date_histogram":
+		aggTagStr, aggTargetStr, err = e.convertDateHistogram(funcExpr)
+		if err != nil {
+			return err
+		}
+	default:
+		err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
+		return err
+	}
+	// we should insert "_count" into funcMap at beginning. So here we suppose _count already exist
+	if _, exist := funcMap[aggTagStr]; !exist {
+		funcMap[aggTagStr] = fmt.Sprintf(`{"%v": {"field": "%v"}`, aggNameStr, aggTargetStr)
+	}
+	return nil
 }
 
 func (e *ESql) extractFuncTag(funcExpr *sqlparser.FuncExpr) (aggNameStr string, aggTargetStr string, aggTagStr string, err error) {
