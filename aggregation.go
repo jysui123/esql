@@ -14,7 +14,7 @@ func (e *ESql) convertAggregation(sel sqlparser.Select) (dsl string, err error) 
 	}
 
 	aggMaps := make(map[string]string)
-	dslGroupBy, err := e.convertGroupBy(sel.GroupBy, aggMaps)
+	dslGroupBy, err := e.convertGroupBy(sel.GroupBy)
 	if err != nil {
 		return "", err
 	}
@@ -48,6 +48,8 @@ func (e *ESql) convertAggregation(sel sqlparser.Select) (dsl string, err error) 
 
 	if dslGroupBy != "" {
 		dsl = fmt.Sprintf(`{"aggs": %v, %v}`, dslGroupBy, dsl)
+	} else {
+		dsl = fmt.Sprintf(`{%v}`, dsl)
 	}
 	return dsl, nil
 }
@@ -305,6 +307,50 @@ func (e *ESql) getAggConcatSelect(aggConcatExprSlice []*sqlparser.GroupConcatExp
 	return aggConcatSlice, aggTagConcatSlice, nil
 }
 
+func (e *ESql) convertSelectExpr(exprs sqlparser.SelectExprs, aggMaps map[string]string) (colNameSlice []string, err error) {
+	for _, selectExpr := range exprs {
+		aliasedExpr, ok := selectExpr.(*sqlparser.AliasedExpr)
+		if !ok {
+			err = fmt.Errorf(`%T not supported in SELECT`, selectExpr)
+			return nil, err
+		}
+		aggTagStr := sqlparser.String(aliasedExpr.As)
+		if _, exist := aggMaps[aggTagStr]; exist {
+			continue
+		}
+		switch expr := aliasedExpr.Expr.(type) {
+		case *sqlparser.FuncExpr:
+			funcName := strings.ToLower(expr.Name.String())
+			var tag, body string
+			switch funcName {
+			case "count":
+				tag, body, err = e.convertCount(*expr)
+			case "max", "min", "avg", "sum":
+				tag, body, err = e.convertStandardArithmetic(*expr)
+			case "date_histogram":
+				tag, body, err = e.convertDateHistogram(*expr)
+			}
+			if aggTagStr == "" {
+				aggTagStr = tag
+			}
+			if _, exist := aggMaps[aggTagStr]; !exist {
+				aggMaps[aggTagStr] = body
+			}
+		case *sqlparser.ColName:
+			lhsStr, err := e.convertColName(expr)
+			if err != nil {
+				return nil, err
+			}
+			colNameSlice = append(colNameSlice, lhsStr)
+		case *sqlparser.GroupConcatExpr:
+
+		case *sqlparser.BinaryExpr, *sqlparser.UnaryExpr, *sqlparser.ParenExpr:
+
+		}
+	}
+	return colNameSlice, nil
+}
+
 func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.FuncExpr, []*sqlparser.GroupConcatExpr, []string, []string, []string, error) {
 	var aggFuncExprSlice []*sqlparser.FuncExpr
 	var aggConcatExprSlice []*sqlparser.GroupConcatExpr
@@ -373,15 +419,15 @@ func (e *ESql) extractSelectedExpr(expr sqlparser.SelectExprs) ([]*sqlparser.Fun
 	return aggFuncExprSlice, aggConcatExprSlice, colNameSlice, aggNameSlice, aggScripts, nil
 }
 
-func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSet map[string]int, err error) {
+func (e *ESql) convertGroupBy(expr sqlparser.GroupBy) (dsl string, err error) {
 	var groupByStrSlice []string
-	colNameSet = make(map[string]int)
+	colNameSet := make(map[string]int)
 	for _, groupByExpr := range expr {
 		switch groupByItem := groupByExpr.(type) {
 		case *sqlparser.ColName:
 			colNameStr, err := e.convertColName(groupByItem)
 			if err != nil {
-				return "", nil, err
+				return "", err
 			}
 			if _, exist := colNameSet[colNameStr]; !exist {
 				colNameSet[colNameStr] = 1
@@ -390,12 +436,12 @@ func (e *ESql) convertGroupByExpr(expr sqlparser.GroupBy) (dsl string, colNameSe
 			}
 		default:
 			err = fmt.Errorf(`esql: GROUP BY %T not supported`, groupByExpr)
-			return "", nil, err
+			return "", err
 		}
 	}
 	dsl = strings.Join(groupByStrSlice, ",")
 	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
-	return dsl, colNameSet, nil
+	return dsl, nil
 }
 
 func (e *ESql) convertFunctionExpr(funcExpr sqlparser.FuncExpr, funcMap map[string]string) (err error) {

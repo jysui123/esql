@@ -7,16 +7,16 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertCount(funcExpr sqlparser.FuncExpr, as string) (aggTagStr string, aggBodyStr string, err error) {
+func (e *ESql) convertCount(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
 	return aggTagStr, aggBodyStr, nil
 }
 
-func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr, as string) (aggTagStr string, aggBodyStr string, err error) {
+func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
 	return aggTagStr, aggBodyStr, nil
 }
 
 // TODO: sanity checks
-func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr, as string) (aggTagStr string, aggBodyStr string, err error) {
+func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
 	aggNameStr := strings.ToLower(funcExpr.Name.String())
 	if aggNameStr != "date_histogram" {
 		err = fmt.Errorf("fail to convert date_histogram")
@@ -39,11 +39,7 @@ func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr, as string) (agg
 		arguments[lhsStr] = rhsStr
 	}
 
-	if as != "" {
-		aggTagStr = as
-	} else {
-		aggTagStr = aggNameStr + "_" + arguments["field"]
-	}
+	aggTagStr = aggNameStr + "_" + arguments["field"]
 
 	var aggBodys []string
 	for k, v := range arguments {
