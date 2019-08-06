@@ -57,6 +57,10 @@ var opUnaryExpr = map[string]string{
 	"+": "+",
 }
 
+var dateHistogramTags = []string{"field", "interval", "format"}
+var rangeTags = []string{"field", "ranges"}
+var dateRangeTags = []string{"field", "format", "ranges"}
+
 // default sizes and identifiers used in cadence visibility
 const (
 	DefaultPageSize      = 1000

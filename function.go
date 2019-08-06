@@ -26,9 +26,9 @@ func (e *ESql) convertCount(funcExpr sqlparser.FuncExpr) (tag string, body strin
 	}
 	tag = strings.Replace(tag, ".", "_", -1)
 	if argument == "*" {
-		body = fmt.Sprintf(`%v": "%v"`, tag, tag)
+		body = fmt.Sprintf(`"%v": "%v"`, tag, tag)
 	} else {
-		body = fmt.Sprintf(`"%v": {"%v": "%v"}`, tag, funcName, argument)
+		body = fmt.Sprintf(`"%v": {"field": "%v"}`, funcName, argument)
 	}
 	return tag, body, nil
 }
@@ -47,7 +47,7 @@ func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr) (tag strin
 	}
 	tag = funcName + "_" + argument
 	tag = strings.Replace(tag, ".", "_", -1)
-	body = fmt.Sprintf(`"%v": {"%v": "%v"}`, tag, funcName, argument)
+	body = fmt.Sprintf(`"%v": {"field": "%v"}`, funcName, argument)
 	return tag, body, nil
 }
 
@@ -60,19 +60,17 @@ func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (tag string, bo
 	}
 
 	arguments := make(map[string]string)
-	for _, expr := range funcExpr.Exprs {
+	for i, expr := range funcExpr.Exprs {
+		if i > 2 {
+			err = fmt.Errorf("fail to convert date_histogram")
+			return "", "", err
+		}
 		aliasedExpr, ok := expr.(*sqlparser.AliasedExpr)
 		if !ok {
 			err = fmt.Errorf("fail to convert date_histogram")
 			return "", "", err
 		}
-		comparisonExpr, ok := aliasedExpr.Expr.(*sqlparser.ComparisonExpr)
-		if !ok || comparisonExpr.Operator != "=" {
-			err = fmt.Errorf("fail to convert date_histogram")
-			return "", "", err
-		}
-		lhsStr, rhsStr := sqlparser.String(comparisonExpr.Left), sqlparser.String(comparisonExpr.Right)
-		arguments[lhsStr] = rhsStr
+		arguments[dateHistogramTags[i]] = strings.Trim(sqlparser.String(aliasedExpr.Expr), "'")
 	}
 
 	tag = funcName + "_" + arguments["field"]
@@ -82,15 +80,97 @@ func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (tag string, bo
 		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": "%v"`, k, v))
 	}
 	body = strings.Join(aggBodys, ",")
+	body = fmt.Sprintf(`"date_histogram": {%v}`, body)
 	tag = strings.Replace(tag, ".", "_", -1)
-	body = fmt.Sprintf(`{%v}`, body)
-	return tag, body, nil
-}
-
-func (e *ESql) convertDateRange(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
 	return tag, body, nil
 }
 
 func (e *ESql) convertRange(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	if funcName != "range" {
+		err = fmt.Errorf("fail to convert range aggregation")
+		return "", "", err
+	}
+
+	arguments := make(map[string]string)
+	var ranges []string
+	for i, expr := range funcExpr.Exprs {
+		aliasedExpr, ok := expr.(*sqlparser.AliasedExpr)
+		if !ok {
+			err = fmt.Errorf("fail to convert date_histogram")
+			return "", "", err
+		}
+		if i == 0 {
+			arguments["field"] = fmt.Sprintf(`"%v"`, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
+		} else {
+			ranges = append(ranges, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
+		}
+	}
+
+	tag = funcName + "_" + arguments["field"]
+	var rangeBodies []string
+	if len(ranges) > 1 {
+		for i := range ranges {
+			if i == len(ranges) - 1 {
+				break
+			}
+			rangeBodies = append(rangeBodies, fmt.Sprintf(`{"from": "%v", "to": "%v"}`, ranges[i], ranges[i+1]))
+		}
+	}
+	rangeBodies = append(rangeBodies, fmt.Sprintf(`{"to": "%v"}`, ranges[0]))
+	rangeBodies = append(rangeBodies, fmt.Sprintf(`{"from": "%v"}`, ranges[len(ranges)-1]))
+	arguments["ranges"] = fmt.Sprintf(`[%v]`, strings.Join(rangeBodies, ","))
+	var aggBodys []string
+	for k, v := range arguments {
+		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": %v`, k, v))
+	}
+	body = strings.Join(aggBodys, ",")
+	body = fmt.Sprintf(`"range": {%v}`, body)
+	tag = strings.Replace(tag, ".", "_", -1)
+	return tag, body, nil
+}
+
+func (e *ESql) convertDateRange(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	if funcName != "date_range" {
+		err = fmt.Errorf("fail to convert date_range aggregation")
+		return "", "", err
+	}
+
+	arguments := make(map[string]string)
+	var ranges []string
+	for i, expr := range funcExpr.Exprs {
+		aliasedExpr, ok := expr.(*sqlparser.AliasedExpr)
+		if !ok {
+			err = fmt.Errorf("fail to convert date_range")
+			return "", "", err
+		}
+		if i < 2 {
+			arguments[dateRangeTags[i]] = fmt.Sprintf(`"%v"`, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
+		} else {
+			ranges = append(ranges, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
+		}
+	}
+
+	tag = funcName + "_" + arguments["field"]
+	var rangeBodies []string
+	if len(ranges) > 1 {
+		for i := range ranges {
+			if i == len(ranges) - 1 {
+				break
+			}
+			rangeBodies = append(rangeBodies, fmt.Sprintf(`{"from": "%v", "to": "%v"}`, ranges[i], ranges[i+1]))
+		}
+	}
+	rangeBodies = append(rangeBodies, fmt.Sprintf(`{"to": "%v"}`, ranges[0]))
+	rangeBodies = append(rangeBodies, fmt.Sprintf(`{"from": "%v"}`, ranges[len(ranges)-1]))
+	arguments["ranges"] = fmt.Sprintf(`[%v]`, strings.Join(rangeBodies, ","))
+	var aggBodys []string
+	for k, v := range arguments {
+		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": %v`, k, v))
+	}
+	body = strings.Join(aggBodys, ",")
+	body = fmt.Sprintf(`"date_range": {%v}`, body)
+	tag = strings.Replace(tag, ".", "_", -1)
 	return tag, body, nil
 }

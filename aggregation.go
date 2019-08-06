@@ -36,7 +36,9 @@ func (e *ESql) convertAggregation(sel sqlparser.Select) (selectedColNames []stri
 
 	var aggs []string
 	for tag, body := range aggMaps {
-		aggs = append(aggs, fmt.Sprintf(`%v: {%v}`, tag, body))
+		if tag != "_count" {
+			aggs = append(aggs, fmt.Sprintf(`"%v": {%v}`, tag, body))
+		}
 	}
 	if dslOrderBy != "" {
 		aggs = append(aggs, fmt.Sprintf(`"order_by": {%v}`, dslOrderBy))
@@ -48,9 +50,9 @@ func (e *ESql) convertAggregation(sel sqlparser.Select) (selectedColNames []stri
 		dsl = fmt.Sprintf(`{%v}`, strings.Join(aggs, ","))
 	}
 
-	if dslGroupBy != "" && dsl == "" {
+	if dslGroupBy != "" && len(aggMaps) == 0 {
 		dsl = fmt.Sprintf(`{"groupby": {%v}}`, dslGroupBy)
-	} else if dslGroupBy != "" && dsl != "" {
+	} else if dslGroupBy != "" && len(aggMaps) != 0 {
 		dsl = fmt.Sprintf(`{"groupby": {%v, "aggs": %v}}`, dslGroupBy, dsl)
 	}
 	return selectedColNames, dsl, nil
@@ -89,13 +91,16 @@ func (e *ESql) convertOrderBy(orderBy sqlparser.OrderBy, aggMaps map[string]stri
 			}
 			dslOrder := fmt.Sprintf(`{"%v": {"order": "%v"}}`, tag, orderExpr.Direction)
 			dslOrderSlice = append(dslOrderSlice, dslOrder)
+		case *sqlparser.ColName:
 		default:
 			err = fmt.Errorf(`esql: %T not supported in ORDER BY`, expr)
 			return "", err
 		}
 	}
-	dsl = strings.Join(dslOrderSlice, ",")
-	dsl = fmt.Sprintf(`"bucket_sort": {"bucket_sort": {"sort": [%v], "size": %v}}`, dsl, e.bucketNumber)
+	if (len(dslOrderSlice) > 0) {
+		dsl = strings.Join(dslOrderSlice, ",")
+		dsl = fmt.Sprintf(`"bucket_sort": {"sort": [%v], "size": %v}`, dsl, e.bucketNumber)
+	}
 	return dsl, nil
 }
 
@@ -126,10 +131,9 @@ func (e *ESql) convertGroupConcatExpr(concatExpr sqlparser.GroupConcatExpr) (tag
 	mapping := fmt.Sprintf(`"map_script": "state.strs.add(%v)"`, unitStr)
 	combine := fmt.Sprintf(`"combine_script": "return String.join('%v', state.strs);"`, sep)
 	reduce := fmt.Sprintf(`"reduce_script": "return String.join('%v', states);"`, sep)
-	scriptedMetric := fmt.Sprintf(`"scripted_metric": {%v, %v, %v, %v}`, init, mapping, combine, reduce)
+	body = fmt.Sprintf(`"scripted_metric": {%v, %v, %v, %v}`, init, mapping, combine, reduce)
 
 	tag = "group_concat_"+strings.Join(colNameStrSlice, "_")
-	body = fmt.Sprintf(`"%v": {%v}`, tag, scriptedMetric)
 	return tag, body, nil
 }
 
@@ -189,7 +193,7 @@ func (e *ESql) convertSelectExpr(exprs sqlparser.SelectExprs, aggMaps map[string
 				bucketPathSlice = append(bucketPathSlice, fmt.Sprintf(`"%v": "%v"`, tag, tag))
 			}
 			bucketPathStr := strings.Join(bucketPathSlice, ",")
-			body := fmt.Sprintf(`"%v": {"bucket_script": {"buckets_path": {%v}, "script": "return %v;"}}`, aggTagStr, bucketPathStr, script)
+			body := fmt.Sprintf(`"bucket_script": {"buckets_path": {%v}, "script": "return %v;"}`, bucketPathStr, script)
 			if _, exist := aggMaps[aggTagStr]; !exist {
 				aggMaps[aggTagStr] = body
 			}
@@ -224,8 +228,10 @@ func (e *ESql) convertGroupBy(expr sqlparser.GroupBy) (dsl string, err error) {
 			return "", err
 		}
 	}
-	dsl = strings.Join(groupByStrSlice, ",")
-	dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
+	if len(groupByStrSlice) > 0 {
+		dsl = strings.Join(groupByStrSlice, ",")
+		dsl = fmt.Sprintf(`"composite": {"size": %v, "sources": [%v]}`, e.bucketNumber, dsl)
+	}
 	return dsl, nil
 }
 
@@ -238,6 +244,10 @@ func (e *ESql) convertFuncExpr(funcExpr sqlparser.FuncExpr) (tag string, body st
 		tag, body, err = e.convertStandardArithmetic(funcExpr)
 	case "date_histogram":
 		tag, body, err = e.convertDateHistogram(funcExpr)
+	case "range":
+		tag, body, err = e.convertRange(funcExpr)
+	case "date_range":
+		tag, body, err = e.convertDateRange(funcExpr)
 	default:
 		err := fmt.Errorf(`esql: aggregation function %v not supported`, aggNameStr)
 		return "", "", err
@@ -245,6 +255,7 @@ func (e *ESql) convertFuncExpr(funcExpr sqlparser.FuncExpr) (tag string, body st
 	if err != nil {
 		return "", "", err
 	}
+	tag = strings.Trim(tag, "'")
 	return tag, body, nil
 }
 

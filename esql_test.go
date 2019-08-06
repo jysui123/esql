@@ -268,7 +268,10 @@ func TestSQL(t *testing.T) {
 		// use esql to translate sql to dsl
 		dsl, _, err := e.ConvertPretty(sql)
 		if err != nil {
+			dsl, _, _ := e.Convert(sql)
+			fmt.Println(dsl)
 			t.Errorf(`esql test: %vth query convert pretty fail: %v`, i+1, err)
+			return
 		}
 		f.WriteString("\n**************************\n" + strconv.Itoa(i+1) + "th query\n")
 		f.WriteString(dsl)

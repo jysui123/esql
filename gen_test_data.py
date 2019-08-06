@@ -85,7 +85,7 @@ schema1 = {
                 "colC": {"type": "keyword"},
                 "colD": {"type": "long"},
                 "colE": {"type": "double"},
-                "ExecutionTime": {"type": "long"}
+                "ExecutionTime": {"type": "date"}
             }
         }
     }
@@ -148,7 +148,7 @@ def genPayload(tableName, missing=20):
         payload['colC'] = payload['colA'] + " " + genRandStr() + " " + genRandStr()
         payload['colD'] = random.randint(0, 20)
         payload['colE'] = random.uniform(0, 20)
-        payload['ExecutionTime'] = random.randint(-500, 2000)
+        payload['ExecutionTime'] = random.randint(100000000000000000, 300000000000000000)
 
     finalPayload = {}
     for k, v in payload.items():

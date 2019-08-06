@@ -79,6 +79,7 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 
 	// handle ORDER BY <column name>
 	// if it is an aggregate query, no point to order
+	// ! _count
 	if _, exist := dslMap["aggs"]; !exist {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {

@@ -123,6 +123,7 @@ func (e *ESql) ConvertPretty(sql string, pagination ...interface{}) (dsl string,
 func (e *ESql) Convert(sql string, pagination ...interface{}) (dsl string, sortField []string, err error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
+		fmt.Println("sqlparser error")
 		return "", nil, err
 	}
 

@@ -14,6 +14,7 @@ Use SQL to query Elasticsearch. ES V6 and V7 compatible.
 - [x] GROUP BY, ORDER BY
 - [x] GROUP_CONCAT
 - [x] AVG, MAX, MIN, SUM, COUNT
+- [x] date_histogram, date_range, range
 - [x] HAVING
 - [x] query key value macro (see usage)
 - [x] pagination (search after)
@@ -102,8 +103,10 @@ page_token_colA := "123"
 page_token_colB := "bbc"
 dsl_page2_search_after, sortFields, err := e.ConvertPretty(sql_page2_search_after, page_colA, page_colB)
 ~~~~
-
-For Cadence usage, refer to [this link](cadenceDevReadme.md).
+### ES aggregation functions
+- date_histogram: `date_histogram('colName', 'interval', 'format')`. e.g. `SELECT date_histogram('mydate', '1M', 'yyyy-MM-dd') FROM dummy`
+- date_range: `date_range('colName', 'format', 'val1', 'val2', ...)`. e.g. `SELECT date_histogram('mydate', 'MM-yy', 'now-10M/M') FROM dummy`
+- range: `range('colName', 'val1', 'val2', ...)`. e.g. `SELECT date('myColumn', '0', '10', '50') FROM dummy`
 
 
 ## Testing

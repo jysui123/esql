@@ -18,7 +18,7 @@ func (e *ESql) convertHaving(having *sqlparser.Where, aggMaps map[string]string)
 			bucketPathSlice = append(bucketPathSlice, fmt.Sprintf(`"%v": "%v"`, tag, tag))
 		}
 		bucketPathStr := strings.Join(bucketPathSlice, ",")
-		dsl = fmt.Sprintf(`"having": {"bucket_selector": {"buckets_path": {%v}, "script": "%v"}}`, bucketPathStr, script)
+		dsl = fmt.Sprintf(`"bucket_selector": {"buckets_path": {%v}, "script": "%v"}`, bucketPathStr, script)
 	}
 	return dsl, err
 }
