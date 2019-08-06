@@ -112,7 +112,6 @@ func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (tag string, bo
 	}
 
 	tag = funcName + "_" + arguments["field"]
-
 	var aggBodys []string
 	for k, v := range arguments {
 		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": "%v"`, k, v))
@@ -189,8 +188,7 @@ func (e *ESql) convertDateRange(funcExpr sqlparser.FuncExpr) (tag string, body s
 			ranges = append(ranges, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
 		}
 	}
-
-	tag = funcName + "_" + arguments["field"]
+	tag = funcName + "_" + strings.Trim(arguments["field"], "\"")
 	var rangeBodies []string
 	if len(ranges) > 1 {
 		for i := range ranges {
