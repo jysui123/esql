@@ -58,22 +58,6 @@ func (e *ESql) convertAggregation(sel sqlparser.Select) (selectedColNames []stri
 	return selectedColNames, dsl, nil
 }
 
-func (e *ESql) checkSelGroupByCompatibility(colNameSlice []string, colNameGroupBy map[string]int, aggNameSlice []string) error {
-	for _, aggName := range aggNameSlice {
-		colNameGroupBy[aggName] = 1
-	}
-	if len(colNameGroupBy) == 0 {
-		return nil
-	}
-	for _, colNameStr := range colNameSlice {
-		if _, exist := colNameGroupBy[colNameStr]; !exist {
-			err := fmt.Errorf(`esql: select column %v that not in group by`, colNameStr)
-			return err
-		}
-	}
-	return nil
-}
-
 func (e *ESql) convertOrderBy(orderBy sqlparser.OrderBy, aggMaps map[string]string) (dsl string, err error) {
 	if orderBy == nil {
 		return "", nil
