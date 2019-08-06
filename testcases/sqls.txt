@@ -107,4 +107,5 @@ SELECT (AVG(colE) + MAX(colD)) * (MIN(colE) / AVG(colD)) AS res FROM test1 GROUP
 SELECT GROUP_CONCAT(colA SEPARATOR '.') FROM test1 GROUP BY colB
 SELECT GROUP_CONCAT(colA SEPARATOR '.') AS res FROM test1 GROUP BY colB
 SELECT range('colD', '0', '5', '10') AS res FROM test1
+SELECT histogram('colD', '3', '5', '0,100') AS res FROM test1
 SELECT (AVG(colE) + MAX(colD)) * (MIN(colE) / AVG(colD)) AS res GROUP BY colB HAVING MIN(colE) / AVG(colD) != MAX(colE) - MIN(colD) * 2

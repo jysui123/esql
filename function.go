@@ -69,8 +69,8 @@ func (e *ESql) convertHistogram(funcExpr sqlparser.FuncExpr) (tag string, body s
 			err = fmt.Errorf("fail to convert date_histogram")
 			return "", "", err
 		}
-		if i < 2 {
-			arguments[histogramTags[i]] = strings.Trim(sqlparser.String(aliasedExpr.Expr), "'")
+		if i < 3 {
+			arguments[histogramTags[i]] = fmt.Sprintf(`"%v"`, strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"))
 		} else {
 			bounds := strings.Split(strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"), ",")
 			arguments[histogramTags[i]] = fmt.Sprintf(`{"min": %v, "max": %v}`, bounds[0], bounds[1])
@@ -81,7 +81,7 @@ func (e *ESql) convertHistogram(funcExpr sqlparser.FuncExpr) (tag string, body s
 
 	var aggBodys []string
 	for k, v := range arguments {
-		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": "%v"`, k, v))
+		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": %v`, k, v))
 	}
 	body = strings.Join(aggBodys, ",")
 	body = fmt.Sprintf(`"histogram": {%v}`, body)
