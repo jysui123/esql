@@ -36,8 +36,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		return "", nil, err
 	}
 
-	// handle SELECT keyword
-	_, _, selectedColNameSlice, aggNameSlice, _, err := e.extractSelectedExpr(sel.SelectExprs)
+	// handle SELECT body, including aggregations and GROUP BY, SELECT <agg function>, ORDER BY <agg function>, HAVING
+	selectedColNameSlice, dslAgg, err := e.convertAggregation(sel)
 	if err != nil {
 		return "", nil, err
 	}
@@ -45,13 +45,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 		colNames := `"` + strings.Join(selectedColNameSlice, `", "`) + `"`
 		dslMap["_source"] = fmt.Sprintf(`{"includes": [%v]}`, colNames)
 	}
-
-	// handle all aggregations, including GROUP BY, SELECT <agg function>, ORDER BY <agg function>, HAVING
-	dslAgg, err := e.convertAgg(sel)
-	if err != nil {
-		return "", nil, err
-	}
-	if dslAgg != "" || len(aggNameSlice) > 0 {
+	// ! _count
+	if dslAgg != "" {
 		if dslAgg != "" {
 			dslMap["aggs"] = dslAgg
 		}
@@ -84,7 +79,8 @@ func (e *ESql) convertSelect(sel sqlparser.Select, domainID string, pagination .
 
 	// handle ORDER BY <column name>
 	// if it is an aggregate query, no point to order
-	if _, exist := dslMap["aggs"]; !exist && len(aggNameSlice) == 0 {
+	// ! _count
+	if _, exist := dslMap["aggs"]; !exist {
 		var orderBySlice []string
 		for _, orderExpr := range sel.OrderBy {
 			var colNameStr string
@@ -343,8 +339,9 @@ func (e *ESql) convertComparisionExpr(expr sqlparser.Expr, parent sqlparser.Expr
 
 	// use painless scripting query here
 	if scriptQuery {
-		lhsStr, _, _, err = e.convertToScript(lhsExpr)
-		rhsStr, _, _, err = e.convertToScript(rhsExpr)
+		aggMapsDummy := make(map[string]string)
+		lhsStr, err = e.convertToScript(lhsExpr, aggMapsDummy)
+		rhsStr, err = e.convertToScript(rhsExpr, aggMapsDummy)
 		if err != nil {
 			return "", err
 		}

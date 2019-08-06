@@ -6,101 +6,82 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertToScript(expr sqlparser.Expr) (script string, aggFuncSlice []*sqlparser.FuncExpr, aggFuncNameSlice []string, err error) {
-	switch expr.(type) {
+func (e *ESql) convertToScript(exprToConvert sqlparser.Expr, aggMaps map[string]string) (script string, err error) {
+	switch expr := exprToConvert.(type) {
 	case *sqlparser.ColName:
-		exprColName := expr.(*sqlparser.ColName)
-		script, err = e.convertColName(exprColName)
+		script, err = e.convertColName(expr)
 		script = fmt.Sprintf(`doc['%v'].value`, script)
 	case *sqlparser.SQLVal:
 		script, err = e.convertValExpr(expr, true)
 	case *sqlparser.BinaryExpr:
-		script, aggFuncSlice, aggFuncNameSlice, err = e.convertBinaryExpr(expr)
+		script, err = e.convertBinaryExprToScript(expr, aggMaps)
 	case *sqlparser.ParenExpr:
-		parenExpr := expr.(*sqlparser.ParenExpr)
-		script, aggFuncSlice, aggFuncNameSlice, err = e.convertToScript(parenExpr.Expr)
+		script, err = e.convertToScript(expr.Expr, aggMaps)
 		script = fmt.Sprintf(`(%v)`, script)
 	case *sqlparser.UnaryExpr:
-		script, aggFuncSlice, aggFuncNameSlice, err = e.convertUnaryExpr(expr)
+		script, err = e.convertUnaryExprToScript(expr, aggMaps)
 	case *sqlparser.FuncExpr:
-		var aggNameStr string
-		aggNameStr, script, err = e.convertFuncExpr(expr)
+		tag, body, err := e.convertFuncExpr(*expr)
 		if err != nil {
-			return "", nil, nil, err
+			return "", err
 		}
-		aggFuncSlice = append(aggFuncSlice, expr.(*sqlparser.FuncExpr))
-		aggFuncNameSlice = append(aggFuncNameSlice, aggNameStr)
+		script = fmt.Sprintf(`params.%v`, tag)
+		// here we suppose aggMaps is initialized
+		if _, exist := aggMaps[tag]; !exist {
+			aggMaps[tag] = body
+		}
 	default:
 		err = fmt.Errorf("esql: invalid expression type for scripting")
 	}
 	if err != nil {
-		return "", nil, nil, err
+		return "", err
 	}
-	return script, aggFuncSlice, aggFuncNameSlice, nil
+	return script, nil
 }
 
-func (e *ESql) convertFuncExpr(expr sqlparser.Expr) (funcNameStr string, script string, err error) {
-	funcExpr, ok := expr.(*sqlparser.FuncExpr)
-	if !ok {
-		err = fmt.Errorf("esql: fail to parse funcExpr")
-		return "", "", err
-	}
-	funcNameStr, _, aggTagStr, err := e.extractFuncTag(funcExpr)
-	if err != nil {
-		return "", "", err
-	}
-	script = fmt.Sprintf(`params.%v`, aggTagStr)
-	return funcNameStr, script, nil
-}
-
-func (e *ESql) convertUnaryExpr(expr sqlparser.Expr) (script string, aggFuncSlice []*sqlparser.FuncExpr, aggFuncNameSlice []string, err error) {
-	var expStr string
+func (e *ESql) convertUnaryExprToScript(expr sqlparser.Expr, aggMaps map[string]string) (script string, err error) {
 	unaryExpr, ok := expr.(*sqlparser.UnaryExpr)
 	if !ok {
 		err = fmt.Errorf("esql: invalid unary expression")
-		return "", nil, nil, err
+		return "", err
 	}
 	op, ok := opUnaryExpr[unaryExpr.Operator]
 	if !ok {
 		err = fmt.Errorf("esql: not supported binary expression operator")
-		return "", nil, nil, err
+		return "", err
 	}
-	expStr, aggFuncSlice, aggFuncNameSlice, err = e.convertToScript(unaryExpr.Expr)
+	script, err = e.convertToScript(unaryExpr.Expr, aggMaps)
 	if err != nil {
-		return "", nil, nil, err
+		return "", err
 	}
 
-	script = fmt.Sprintf(`%v%v`, op, expStr)
-	return script, aggFuncSlice, aggFuncNameSlice, nil
+	script = fmt.Sprintf(`%v%v`, op, script)
+	return script, nil
 }
 
-func (e *ESql) convertBinaryExpr(expr sqlparser.Expr) (script string, aggFuncSlice []*sqlparser.FuncExpr, aggFuncNameSlice []string, err error) {
-	var lhsStr, rhsStr string
+func (e *ESql) convertBinaryExprToScript(expr sqlparser.Expr, aggMaps map[string]string) (script string, err error) {
+	var lhsScript, rhsScript string
 	binExpr, ok := expr.(*sqlparser.BinaryExpr)
 	if !ok {
 		err = fmt.Errorf("esql: invalid binary expression")
-		return "", nil, nil, err
+		return "", err
 	}
 	lhsExpr, rhsExpr := binExpr.Left, binExpr.Right
 	op, ok := opBinaryExpr[binExpr.Operator]
 	if !ok {
 		err = fmt.Errorf("esql: not supported binary expression operator")
-		return "", nil, nil, err
+		return "", err
 	}
 
-	var aggFuncs []*sqlparser.FuncExpr
-	var aggNames []string
-	lhsStr, aggFuncSlice, aggFuncNameSlice, err = e.convertToScript(lhsExpr)
+	lhsScript, err = e.convertToScript(lhsExpr, aggMaps)
 	if err != nil {
-		return "", nil, nil, err
+		return "", err
 	}
-	rhsStr, aggFuncs, aggNames, err = e.convertToScript(rhsExpr)
+	rhsScript, err = e.convertToScript(rhsExpr, aggMaps)
 	if err != nil {
-		return "", nil, nil, err
+		return "", err
 	}
-	aggFuncNameSlice = append(aggFuncNameSlice, aggNames...)
-	aggFuncSlice = append(aggFuncSlice, aggFuncs...)
 
-	script = fmt.Sprintf(`%v %v %v`, lhsStr, op, rhsStr)
-	return script, aggFuncSlice, aggFuncNameSlice, nil
+	script = fmt.Sprintf(`%v %v %v`, lhsScript, op, rhsScript)
+	return script, nil
 }

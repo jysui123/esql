@@ -14,6 +14,7 @@ Use SQL to query Elasticsearch. ES V6 and V7 compatible.
 - [x] GROUP BY, ORDER BY
 - [x] GROUP_CONCAT
 - [x] AVG, MAX, MIN, SUM, COUNT
+- [x] date_histogram, date_range, range
 - [x] HAVING
 - [x] query key value macro (see usage)
 - [x] pagination (search after)
@@ -23,7 +24,6 @@ Use SQL to query Elasticsearch. ES V6 and V7 compatible.
 - [ ] nested queries
 
 ### Attention
-- AS only support alias for compound aggregation arithmetic expression in SELECT. e.g. `SELECT MAX(colA)/COUNT(*) AS res FROM dummy GROUP BY colB`. The tag in query result json of the expression will be assigned as the alias. Otherwise the tag will just be `aggExpr1`, `aggExpr2`, etc. For non-compound selection, the result tag is in the form of `<function name>_<argument>`
 - Arithmetics are allowed in SELECT and WHERE clause. They use script query, and thus are not able to utilize reverse index and can be potentially slow.
 - Aggregation functions can be introduced from SELECT, ORDER BY and HAVING
 - If you want to apply aggregation on some fields, they should not be in type `text` in ES
@@ -103,6 +103,10 @@ page_token_colA := "123"
 page_token_colB := "bbc"
 dsl_page2_search_after, sortFields, err := e.ConvertPretty(sql_page2_search_after, page_colA, page_colB)
 ~~~~
+### ES aggregation functions
+- date_histogram: `date_histogram('colName', 'interval', 'format')`. e.g. `SELECT date_histogram('mydate', '1M', 'yyyy-MM-dd') FROM dummy`
+- date_range: `date_range('colName', 'format', 'val1', 'val2', ...)`. e.g. `SELECT date_histogram('mydate', 'MM-yy', 'now-10M/M') FROM dummy`
+- range: `range('colName', 'val1', 'val2', ...)`. e.g. `SELECT date('myColumn', '0', '10', '50') FROM dummy`
 
 
 ## Testing
