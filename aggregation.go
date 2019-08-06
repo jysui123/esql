@@ -242,6 +242,8 @@ func (e *ESql) convertFuncExpr(funcExpr sqlparser.FuncExpr) (tag string, body st
 		tag, body, err = e.convertCount(funcExpr)
 	case "avg", "sum", "min", "max":
 		tag, body, err = e.convertStandardArithmetic(funcExpr)
+	case "histogram":
+		tag, body, err = e.convertHistogram(funcExpr)
 	case "date_histogram":
 		tag, body, err = e.convertDateHistogram(funcExpr)
 	case "range":

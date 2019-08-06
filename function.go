@@ -51,6 +51,44 @@ func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr) (tag strin
 	return tag, body, nil
 }
 
+func (e *ESql) convertHistogram(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	if funcName != "histogram" {
+		err = fmt.Errorf("fail to convert histogram")
+		return "", "", err
+	}
+
+	arguments := make(map[string]string)
+	for i, expr := range funcExpr.Exprs {
+		if i > 3 {
+			err = fmt.Errorf("fail to convert histogram")
+			return "", "", err
+		} 
+		aliasedExpr, ok := expr.(*sqlparser.AliasedExpr)
+		if !ok {
+			err = fmt.Errorf("fail to convert date_histogram")
+			return "", "", err
+		}
+		if i < 2 {
+			arguments[histogramTags[i]] = strings.Trim(sqlparser.String(aliasedExpr.Expr), "'")
+		} else {
+			bounds := strings.Split(strings.Trim(sqlparser.String(aliasedExpr.Expr), "'"), ",")
+			arguments[histogramTags[i]] = fmt.Sprintf(`{"min": %v, "max": %v}`, bounds[0], bounds[1])
+		}
+	}
+
+	tag = funcName + "_" + arguments["field"]
+
+	var aggBodys []string
+	for k, v := range arguments {
+		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": "%v"`, k, v))
+	}
+	body = strings.Join(aggBodys, ",")
+	body = fmt.Sprintf(`"histogram": {%v}`, body)
+	tag = strings.Replace(tag, ".", "_", -1)
+	return tag, body, nil
+}
+
 // TODO: sanity checks
 func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
 	funcName := strings.ToLower(funcExpr.Name.String())

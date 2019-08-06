@@ -58,6 +58,7 @@ var opUnaryExpr = map[string]string{
 }
 
 var dateHistogramTags = []string{"field", "interval", "format"}
+var histogramTags = []string{"field", "interval", "min_doc_count", "extended_bounds"}
 var rangeTags = []string{"field", "ranges"}
 var dateRangeTags = []string{"field", "format", "ranges"}
 
