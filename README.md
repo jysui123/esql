@@ -23,7 +23,6 @@ Use SQL to query Elasticsearch. ES V6 and V7 compatible.
 - [ ] nested queries
 
 ### Attention
-- AS only support alias for compound aggregation arithmetic expression in SELECT. e.g. `SELECT MAX(colA)/COUNT(*) AS res FROM dummy GROUP BY colB`. The tag in query result json of the expression will be assigned as the alias. Otherwise the tag will just be `aggExpr1`, `aggExpr2`, etc. For non-compound selection, the result tag is in the form of `<function name>_<argument>`
 - Arithmetics are allowed in SELECT and WHERE clause. They use script query, and thus are not able to utilize reverse index and can be potentially slow.
 - Aggregation functions can be introduced from SELECT, ORDER BY and HAVING
 - If you want to apply aggregation on some fields, they should not be in type `text` in ES
