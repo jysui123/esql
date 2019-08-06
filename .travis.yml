@@ -11,7 +11,7 @@ before_install:
   - go get -t -v ./...
 
 script:
-  - go test -covermode=atomic -run=TestUnit
+  - go test -coverprofile=coverage.txt -covermode=atomic -run=TestUnit
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
