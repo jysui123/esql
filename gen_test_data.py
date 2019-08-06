@@ -85,7 +85,7 @@ schema1 = {
                 "colC": {"type": "keyword"},
                 "colD": {"type": "long"},
                 "colE": {"type": "double"},
-                "ExecutionTime": {"type": "long"},
+                "ExecutionTime": {"type": "long"}
             }
         }
     }
@@ -151,7 +151,7 @@ def genPayload(tableName, missing=20):
         payload['ExecutionTime'] = random.randint(-500, 2000)
 
     finalPayload = {}
-    for k, v in payload.iteritems():
+    for k, v in payload.items():
         if random.randint(1, 100) > missingPercent:
             finalPayload[k] = v
     return finalPayload

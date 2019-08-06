@@ -7,18 +7,54 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func (e *ESql) convertCount(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
-	return aggTagStr, aggBodyStr, nil
+func (e *ESql) convertCount(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	argument := sqlparser.String(funcExpr.Exprs)
+	argument = strings.Trim(argument, "`")
+	argument, err = e.keyProcess(argument)
+	if err != nil {
+		return "", "", err
+	}
+	if argument == "*" {
+		tag = "_count"
+	} else if funcExpr.Distinct {
+		tag = funcName + "_distinct_" + argument
+		funcName = "cardinality"
+	} else {
+		tag = funcName + "_" + argument
+		funcName = "value_count"
+	}
+	tag = strings.Replace(tag, ".", "_", -1)
+	if argument == "*" {
+		body = fmt.Sprintf(`%v": "%v"`, tag, tag)
+	} else {
+		body = fmt.Sprintf(`"%v": {"%v": "%v"}`, tag, funcName, argument)
+	}
+	return tag, body, nil
 }
 
-func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
-	return aggTagStr, aggBodyStr, nil
+func (e *ESql) convertStandardArithmetic(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	argument := sqlparser.String(funcExpr.Exprs)
+	argument = strings.Trim(argument, "`")
+	argument, err = e.keyProcess(argument)
+	if err != nil {
+		return "", "", err
+	}
+	if funcExpr.Distinct {
+		err := fmt.Errorf(`esql: aggregation function %v w/ DISTINCT not supported`, funcName)
+		return "", "", err
+	}
+	tag = funcName + "_" + argument
+	tag = strings.Replace(tag, ".", "_", -1)
+	body = fmt.Sprintf(`"%v": {"%v": "%v"}`, tag, funcName, argument)
+	return tag, body, nil
 }
 
 // TODO: sanity checks
-func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
-	aggNameStr := strings.ToLower(funcExpr.Name.String())
-	if aggNameStr != "date_histogram" {
+func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	funcName := strings.ToLower(funcExpr.Name.String())
+	if funcName != "date_histogram" {
 		err = fmt.Errorf("fail to convert date_histogram")
 		return "", "", err
 	}
@@ -39,21 +75,22 @@ func (e *ESql) convertDateHistogram(funcExpr sqlparser.FuncExpr) (aggTagStr stri
 		arguments[lhsStr] = rhsStr
 	}
 
-	aggTagStr = aggNameStr + "_" + arguments["field"]
+	tag = funcName + "_" + arguments["field"]
 
 	var aggBodys []string
 	for k, v := range arguments {
 		aggBodys = append(aggBodys, fmt.Sprintf(`"%v": "%v"`, k, v))
 	}
-	aggBodyStr = strings.Join(aggBodys, ",")
-	aggBodyStr = fmt.Sprintf(`{%v}`, aggBodyStr)
-	return aggTagStr, aggBodyStr, nil
+	body = strings.Join(aggBodys, ",")
+	tag = strings.Replace(tag, ".", "_", -1)
+	body = fmt.Sprintf(`{%v}`, body)
+	return tag, body, nil
 }
 
-func (e *ESql) convertDateRange(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
-	return aggTagStr, aggBodyStr, nil
+func (e *ESql) convertDateRange(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	return tag, body, nil
 }
 
-func (e *ESql) convertRange(funcExpr sqlparser.FuncExpr) (aggTagStr string, aggBodyStr string, err error) {
-	return aggTagStr, aggBodyStr, nil
+func (e *ESql) convertRange(funcExpr sqlparser.FuncExpr) (tag string, body string, err error) {
+	return tag, body, nil
 }
