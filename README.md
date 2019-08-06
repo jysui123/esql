@@ -1,7 +1,7 @@
 # ESQL: Translate SQL to Elasticsearch DSL
 [![Build Status](https://travis-ci.org/jysui123/esql.svg?branch=master)](https://travis-ci.org/jysui123/esql) [![codecov](https://codecov.io/gh/jysui123/esql/branch/master/graph/badge.svg)](https://codecov.io/gh/jysui123/esql) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
 
-Use SQL to query Elasticsearch. ES V6 and V7 compatible.
+Use SQL to query Elasticsearch. ES V6 compatible.
 
 ## Supported features
 ### Keywords and functionalities
@@ -135,7 +135,7 @@ To customize test cases:
 - invalid query test cases are in `testcases/sqlsInvalid.txt`
 
 
-## Changes from ES V2 to ES V6/V7
+## Changes from ES V2 to ES V6
 |Item|ES V2|ES v6/v7|
 |:-:|:-:|:-:|
 |missing check|{"missing": {"field": "xxx"}}|{"must_not": {"exist": {"field": "xxx"}}}|
